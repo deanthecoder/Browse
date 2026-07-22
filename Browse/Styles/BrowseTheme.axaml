@@ -1,0 +1,47 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Window">
+    <Setter Property="Background" Value="#17191D" />
+    <Setter Property="Foreground" Value="#F1F3F5" />
+    <Setter Property="FontFamily" Value="Inter" />
+  </Style>
+  <Style Selector="Button.chrome">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="7" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+  <Style Selector="Button.chrome:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#353A43" />
+  </Style>
+  <Style Selector="Button.expandPreview">
+    <Setter Property="Opacity" Value="0.35" />
+  </Style>
+  <Style Selector="Button.expandPreview:pointerover">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="ListBox.browserList">
+    <Setter Property="Background" Value="#202329" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ListBox.browserList ListBoxItem">
+    <Setter Property="Padding" Value="7,5" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="ListBox.browserList ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="#245F9E" />
+  </Style>
+  <Style Selector="Grid.folderDropTarget">
+    <Setter Property="Background" Value="#3A6388" />
+  </Style>
+  <Style Selector="TextBlock.muted">
+    <Setter Property="Foreground" Value="#9CA5B2" />
+  </Style>
+  <Style Selector="ContextMenu">
+    <Setter Property="Padding" Value="6" />
+  </Style>
+  <Style Selector="ContextMenu MenuItem">
+    <Setter Property="Padding" Value="12,7" />
+  </Style>
+</Styles>

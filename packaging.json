@@ -1,0 +1,25 @@
+{
+  "ProductName": "Browse",
+  "CompanyName": "Dean Edis (DeanTheCoder)",
+  "PublisherUrl": "https://github.com/deanthecoder/Browse",
+  "BundleIdentifier": "com.deanthecoder.browse",
+  "Executable": "Browse",
+  "Project": "Browse/Browse.csproj",
+  "Version": "0.1",
+  "Win": {
+    "InnoScript": "Packaging/inno.iss",
+    "IconIco": "Browse/Assets/app.ico",
+    "GUID": "{47424EE2-23E3-4678-A126-42B4BD4210CB}",
+    "RuntimeIdentifier": "win-x64",
+    "InstallOpenAL": false,
+    "ShowRunOnStartupTask": true
+  },
+  "Mac": {
+    "RuntimeIdentifiers": [
+      "osx-arm64",
+      "osx-x64"
+    ],
+    "IconIcns": "Browse/Assets/app.icns",
+    "InfoPlist": "Installer/templates/Info.plist"
+  }
+}

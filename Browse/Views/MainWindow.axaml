@@ -1,0 +1,222 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:icons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        xmlns:edit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+        xmlns:vm="using:Browse.ViewModels"
+        xmlns:models="using:Browse.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1035"
+        d:DesignHeight="410"
+        x:Class="Browse.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1035"
+        Height="410"
+        MinWidth="780"
+        MinHeight="320"
+        Title="Browse">
+  <Window.Resources>
+    <ContextMenu x:Key="ItemContextMenu">
+      <MenuItem Header="Open" Click="OnOpenClicked" IsVisible="{Binding !IsDirectory}" />
+      <MenuItem Header="Browse here..." Click="OnOpenInNewWindowClicked" IsVisible="{Binding IsDirectory}" />
+      <MenuItem Header="Open terminal here" Click="OnTerminalClicked" />
+      <Separator />
+      <MenuItem Header="Cut" Click="OnCutClicked" />
+      <MenuItem Header="Copy" Click="OnCopyClicked" />
+      <MenuItem Header="Paste" Click="OnPasteClicked" IsVisible="{Binding IsDirectory}" />
+      <MenuItem Header="Rename" InputGesture="F2" Click="OnRenameClicked" />
+      <Separator />
+      <MenuItem Header="Copy full path(s)" Click="OnCopyPathsClicked" />
+      <Separator />
+      <MenuItem Header="Compress" Click="OnCreateZipClicked" />
+      <MenuItem Header="Delete" Click="OnDeleteClicked" />
+    </ContextMenu>
+  </Window.Resources>
+
+  <Grid RowDefinitions="*,26">
+    <Grid Grid.Row="0" ColumnDefinitions="185,1,*,1,285">
+      <Border Grid.Column="0" Background="#1B1E23" Padding="8">
+        <ScrollViewer>
+          <StackPanel Spacing="4">
+            <TextBlock Text="FAVORITES" Classes="muted" FontSize="11" FontWeight="SemiBold" Margin="8,8,8,4" />
+            <ItemsControl ItemsSource="{Binding Favorites}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SidebarEntryViewModel">
+                  <Button Tag="{Binding}" Classes="chrome" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked">
+                    <Grid ColumnDefinitions="24,*" ColumnSpacing="7">
+                      <icons:MaterialIcon Grid.Column="0" Kind="Folder" Width="18" Height="18" Foreground="#8DBCEB" />
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="DRIVES" Classes="muted" FontSize="11" FontWeight="SemiBold" Margin="8,18,8,4" />
+            <ItemsControl ItemsSource="{Binding Drives}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SidebarEntryViewModel">
+                  <Button Tag="{Binding}" Classes="chrome" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked">
+                    <Grid ColumnDefinitions="24,*" ColumnSpacing="7">
+                      <icons:MaterialIcon Grid.Column="0" Kind="Harddisk" Width="18" Height="18" Foreground="#AAB4C2" />
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <Border Grid.Column="1" Background="#3B4049" />
+
+      <ScrollViewer x:Name="ColumnScrollViewer"
+                    Grid.Column="2"
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Disabled"
+                    AllowAutoHide="False">
+        <ItemsControl ItemsSource="{Binding Columns}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:FolderColumnViewModel">
+              <Border Width="270" MinWidth="230" Background="#202329" BorderBrush="#3B4049" BorderThickness="0,0,1,0">
+                <Grid RowDefinitions="34,*">
+                  <Border Grid.Row="0" Background="#24272D" BorderBrush="#3B4049" BorderThickness="0,0,0,1" Padding="10,7">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <ProgressBar Grid.Column="1" Width="36" Height="3" IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
+                    </Grid>
+                  </Border>
+                  <Grid Grid.Row="1">
+                    <ListBox Classes="browserList"
+                             ItemsSource="{Binding Items}"
+                             SelectionMode="Multiple"
+                             DragDrop.AllowDrop="True"
+                             DragDrop.DragOver="OnColumnDragOver"
+                             DragDrop.Drop="OnColumnDrop"
+                             GotFocus="OnColumnGotFocus"
+                             SelectionChanged="OnColumnSelectionChanged"
+                             DoubleTapped="OnItemDoubleTapped">
+                      <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:BrowserItem">
+                          <Grid ColumnDefinitions="22,*,Auto"
+                                ColumnSpacing="6"
+                                ToolTip.Tip="{Binding FullPath}"
+                                Tag="{Binding}"
+                                Background="Transparent"
+                                DragDrop.AllowDrop="True"
+                                DragDrop.DragOver="OnItemDragOver"
+                                DragDrop.DragLeave="OnItemDragLeave"
+                                DragDrop.Drop="OnItemDrop">
+                            <icons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="18" Height="18" Foreground="{Binding IconBrush}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2" Text="›" FontSize="18" Classes="muted" IsVisible="{Binding IsDirectory}" />
+                          </Grid>
+                        </DataTemplate>
+                      </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="{Binding Error}" Foreground="#FF7B72" TextWrapping="Wrap" Margin="12" />
+                  </Grid>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <Border Grid.Column="3" Background="#3B4049" />
+
+      <Border Grid.Column="4" Background="#1B1E23" Padding="14">
+        <Grid RowDefinitions="Auto,Auto,Auto,*">
+          <Grid Grid.Row="0" ColumnDefinitions="40,*,Auto" ColumnSpacing="10" IsVisible="{Binding HasSelection}">
+            <icons:MaterialIcon Grid.Column="0" Kind="{Binding PreviewIcon}" Width="34" Height="34" Foreground="{Binding PreviewIconBrush}" />
+            <TextBlock Grid.Column="1" Text="{Binding PreviewSummary}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2" VerticalAlignment="Center" />
+            <Button Grid.Column="2" Classes="chrome expandPreview" Padding="5" ToolTip.Tip="Open larger preview..." Click="OnExpandPreviewClicked" IsVisible="{Binding CanExpandPreview}">
+              <icons:MaterialIcon Kind="ArrowExpandAll" Width="18" Height="18" Foreground="#DCE3EC" />
+            </Button>
+          </Grid>
+          <TextBlock Grid.Row="1" Text="{Binding PreviewPath}" Classes="muted" FontSize="11" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2" Margin="0,10,0,0" />
+          <TextBlock Grid.Row="2" Text="{Binding PreviewDetails}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,10" />
+          <Border Grid.Row="3" Background="#121417" BorderBrush="#343941" BorderThickness="1" CornerRadius="5" Padding="10">
+            <Grid>
+              <TextBlock Text="Select a file or folder" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasSelection}" />
+              <Image Source="{Binding PreviewImage}" Stretch="Uniform" IsVisible="{Binding IsImagePreview}" />
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsTextPreview}">
+                <TextBlock Text="{Binding PreviewContent}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" />
+              </ScrollViewer>
+              <edit:TextEditor Document="{Binding PreviewContent, Converter={StaticResource CodeDocument}}"
+                               SyntaxHighlighting="{Binding PreviewPath, Converter={StaticResource CodeHighlighting}}"
+                               IsReadOnly="True"
+                               WordWrap="False"
+                               ShowLineNumbers="False"
+                               FontFamily="Consolas"
+                               FontSize="11"
+                               Background="Transparent"
+                               IsVisible="{Binding IsCodePreview}" />
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsMarkdownPreview}">
+                <TextBlock Text="{Binding PreviewContent}" TextWrapping="Wrap" FontSize="11" />
+              </ScrollViewer>
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" IsVisible="{Binding IsArchivePreview}">
+                <TextBlock Text="{Binding PreviewContent}" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="10" />
+              </ScrollViewer>
+              <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFolderPreview}">
+                <icons:MaterialIcon Kind="Folder" Width="56" Height="56" Foreground="#E7BD68" HorizontalAlignment="Center" />
+                <Button Content="Calculate size" Click="OnCalculateSizeClicked" IsVisible="{Binding CanCalculateFolderSize}" />
+                <TextBlock Text="{Binding FolderSize}" TextWrapping="Wrap" TextAlignment="Center" />
+              </StackPanel>
+              <TextBlock Text="No preview available" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsNoPreview}" />
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="1" Background="#24272D" BorderBrush="#3B4049" BorderThickness="0,1,0,0" Padding="9,2">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding StatusText}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="chrome" Padding="3" ToolTip.Tip="Settings" Click="OnSettingsClicked">
+          <icons:MaterialIcon Kind="Cog" Width="16" Height="16" Foreground="#AAB4C2" />
+        </Button>
+      </Grid>
+    </Border>
+
+    <Border Grid.RowSpan="2" Background="#99000000" IsVisible="{Binding IsGoToVisible}">
+      <Border Width="620" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="18" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,90,0,0">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Go to path" FontSize="17" FontWeight="SemiBold" />
+          <TextBox x:Name="GoToTextBox" Text="{Binding GoToPath}" Watermark="Path or UNC location" KeyDown="OnGoToKeyDown" />
+          <TextBlock Text="Enter to open · Escape to cancel" Classes="muted" FontSize="11" />
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Grid.RowSpan="2" Background="#99000000" IsVisible="{Binding IsRenameVisible}">
+      <Border Width="480" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="18" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,110,0,0">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Rename" FontSize="17" FontWeight="SemiBold" />
+          <TextBox x:Name="RenameTextBox" Text="{Binding RenameText}" KeyDown="OnRenameKeyDown" />
+          <TextBlock Text="Enter to rename · Escape to cancel" Classes="muted" FontSize="11" />
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Grid.RowSpan="2" Background="#99000000" IsVisible="{Binding IsSettingsVisible}">
+      <Border Width="440" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="20" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,32">
+        <StackPanel Spacing="14">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" />
+            <Button Grid.Column="1" Content="✕" Classes="chrome" Click="OnSettingsCloseClicked" />
+          </Grid>
+          <CheckBox Content="Show hidden and system items" IsChecked="{Binding ShowHiddenItems}" />
+          <CheckBox Content="Show dot-prefixed folders (such as .git)" IsChecked="{Binding ShowDotFolders}" />
+          <TextBlock Text="Changes are applied immediately and saved automatically." Classes="muted" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid>
+</Window>

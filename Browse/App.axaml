@@ -1,0 +1,18 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:icons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:converters="using:Browse.Converters"
+             x:Class="Browse.App"
+             RequestedThemeVariant="Dark"
+             Name="Browse">
+  <Application.Resources>
+    <converters:CodeHighlightingConverter x:Key="CodeHighlighting" />
+    <converters:CodeDocumentConverter x:Key="CodeDocument" />
+  </Application.Resources>
+  <Application.Styles>
+    <FluentTheme DensityStyle="Compact" />
+    <icons:MaterialIconStyles />
+    <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+    <StyleInclude Source="avares://Browse/Styles/BrowseTheme.axaml" />
+  </Application.Styles>
+</Application>
