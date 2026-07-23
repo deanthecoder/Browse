@@ -8,7 +8,6 @@
 //
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
-using System.Text.Json;
 using Browse.Models;
 
 namespace Browse.Services;
@@ -21,41 +20,13 @@ namespace Browse.Services;
 /// </remarks>
 public sealed class SettingsService
 {
-    private readonly FileInfo m_settingsFile;
+    private BrowserSettings m_settings;
 
-    public SettingsService(FileInfo settingsFile = null)
-    {
-        m_settingsFile = settingsFile ?? new FileInfo(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Browse",
-            "settings.json"));
-    }
-
-    public BrowserSettings Load()
-    {
-        try
-        {
-            if (m_settingsFile.Exists)
-                return JsonSerializer.Deserialize<BrowserSettings>(File.ReadAllText(m_settingsFile.FullName)) ?? CreateDefaults();
-        }
-        catch (Exception) when (m_settingsFile.Exists)
-        {
-            // Keep a damaged or inaccessible settings file from preventing startup.
-        }
-        return CreateDefaults();
-    }
+    public BrowserSettings Load() => m_settings ??= new BrowserSettings();
 
     public void Save(BrowserSettings settings)
     {
-        m_settingsFile.Directory?.Create();
-        File.WriteAllText(m_settingsFile.FullName, JsonSerializer.Serialize(settings, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        }));
+        m_settings = settings;
+        settings.Save();
     }
-
-    private static BrowserSettings CreateDefaults() => new()
-    {
-        DefaultPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-    };
 }

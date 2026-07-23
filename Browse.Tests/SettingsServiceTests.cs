@@ -8,9 +8,7 @@
 //
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
-using Browse.Models;
 using Browse.Services;
-using DTC.Core;
 
 namespace Browse.Tests;
 
@@ -18,22 +16,12 @@ namespace Browse.Tests;
 public sealed class SettingsServiceTests
 {
     [Test]
-    public void CheckSettingsRoundTrip()
+    public void CheckSettingsServiceReturnsItsSharedSettingsInstance()
     {
-        using var temp = new TempDirectory();
-        var file = new FileInfo(Path.Combine(temp.FullName, "settings.json"));
-        var service = new SettingsService(file);
-        service.Save(new BrowserSettings
-        {
-            DefaultPath = @"\\server\share",
-            ShowDotFolders = true,
-            ShowHiddenItems = true
-        });
+        var service = new SettingsService();
+        var first = service.Load();
+        var second = service.Load();
 
-        var loaded = service.Load();
-
-        Assert.That(loaded.DefaultPath, Is.EqualTo(@"\\server\share"));
-        Assert.That(loaded.ShowDotFolders, Is.True);
-        Assert.That(loaded.ShowHiddenItems, Is.True);
+        Assert.That(second, Is.SameAs(first));
     }
 }

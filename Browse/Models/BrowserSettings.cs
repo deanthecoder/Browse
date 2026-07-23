@@ -8,6 +8,8 @@
 //
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
+using DTC.Core.Settings;
+
 namespace Browse.Models;
 
 /// <summary>
@@ -16,11 +18,47 @@ namespace Browse.Models;
 /// <remarks>
 /// Settings are intentionally compact and portable between supported desktop platforms.
 /// </remarks>
-public sealed class BrowserSettings
+public sealed class BrowserSettings : UserSettingsBase
 {
-    public bool ShowHiddenItems { get; set; }
-    public bool ShowDotFolders { get; set; }
-    public string DefaultPath { get; set; }
-    public string TerminalCommand { get; set; }
-    public bool EnableGlobalShortcut { get; set; } = true;
+    public bool ShowHiddenItems
+    {
+        get => Get<bool>();
+        set => Set(value);
+    }
+
+    public bool ShowDotFolders
+    {
+        get => Get<bool>();
+        set => Set(value);
+    }
+
+    public string DefaultPath
+    {
+        get => Get<string>();
+        set => Set(value);
+    }
+
+    public string TerminalCommand
+    {
+        get => Get<string>();
+        set => Set(value);
+    }
+
+    public bool EnableGlobalShortcut
+    {
+        get => Get<bool>();
+        set => Set(value);
+    }
+
+    public string[] FavoritePaths
+    {
+        get => Get<string[]>();
+        set => Set(value);
+    }
+
+    protected override void ApplyDefaults()
+    {
+        DefaultPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        EnableGlobalShortcut = true;
+    }
 }
