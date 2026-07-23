@@ -39,9 +39,13 @@ public class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            var requestedPath = desktop.Args?.FirstOrDefault();
-            desktop.MainWindow = CreateWindow(requestedPath, false);
-            desktop.MainWindow.Show();
+            var backgroundOnly = desktop.Args?.Any(argument => argument.Equals("--background", StringComparison.OrdinalIgnoreCase)) == true;
+            var requestedPath = desktop.Args?.FirstOrDefault(argument => !argument.StartsWith("--", StringComparison.Ordinal));
+            if (!backgroundOnly)
+            {
+                desktop.MainWindow = CreateWindow(requestedPath, false);
+                desktop.MainWindow.Show();
+            }
             m_trayIcon = CreateTrayIcon(desktop);
             TrayIcon.SetIcons(this, [m_trayIcon]);
             if (OperatingSystem.IsWindows() && m_settingsService.Load().EnableGlobalShortcut)
@@ -88,7 +92,7 @@ public class App : Application
     {
         var menu = new NativeMenu
         {
-            new NativeMenuItem("New Browse window")
+            new NativeMenuItem("New Browse window...")
             {
                 Command = new RelayCommand(_ => CreateWindow())
             },
