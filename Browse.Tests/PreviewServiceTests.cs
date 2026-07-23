@@ -59,4 +59,21 @@ public sealed class PreviewServiceTests
             Assert.That(highlighting, Is.Not.Null);
         });
     }
+
+    [Test]
+    public async Task CheckLargeTextPreviewIsBounded()
+    {
+        using var temp = new TempDirectory();
+        var path = Path.Combine(temp.FullName, "large.txt");
+        await File.WriteAllLinesAsync(path, Enumerable.Range(0, 2_000).Select(index => $"Line {index:D4}: {new string('x', 100)}"));
+
+        var result = await new PreviewService().CreateAsync([new BrowserItem(new FileInfo(path))]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Content, Does.EndWith("… preview truncated …"));
+            Assert.That(result.Content.Split('\n').Length, Is.LessThanOrEqualTo(602));
+            Assert.That(result.Content.Length, Is.LessThan(70_000));
+        });
+    }
 }

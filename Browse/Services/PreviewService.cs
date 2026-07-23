@@ -23,7 +23,8 @@ namespace Browse.Services;
 /// </remarks>
 public sealed class PreviewService
 {
-    private const int MaxPreviewBytes = 512 * 1024;
+    private const int MaxPreviewBytes = 64 * 1024;
+    private const int MaxPreviewLines = 600;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"
@@ -113,6 +114,10 @@ public sealed class PreviewService
         var buffer = new byte[byteCount];
         var read = await stream.ReadAsync(buffer.AsMemory(0, byteCount), cancellationToken);
         var content = Encoding.UTF8.GetString(buffer, 0, read);
-        return file.Length > MaxPreviewBytes ? content + "\n\n… preview truncated …" : content;
+        var lines = content.Split('\n');
+        var wasTruncated = file.Length > MaxPreviewBytes || lines.Length > MaxPreviewLines;
+        if (lines.Length > MaxPreviewLines)
+            content = string.Join('\n', lines.Take(MaxPreviewLines));
+        return wasTruncated ? content + "\n\n… preview truncated …" : content;
     }
 }
