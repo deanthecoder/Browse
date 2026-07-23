@@ -63,17 +63,4 @@ public sealed class MainWindowViewModelTests
         Assert.That(column.Items[2], Is.SameAs(selected));
     }
 
-    [Test]
-    public void CheckLongNamesAreSplitForMiddleTruncation()
-    {
-        const string name = "A very long filename that needs to keep its useful extension.txt";
-
-        var (prefix, suffix) = BrowserItem.SplitName(name);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(prefix + suffix, Is.EqualTo(name));
-            Assert.That(suffix, Does.EndWith(".txt"));
-        });
-    }
 }

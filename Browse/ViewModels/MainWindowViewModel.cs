@@ -46,8 +46,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private string m_currentPath;
     private string m_statusText = "Ready";
     private PreviewContent m_preview = new EmptyPreviewContent();
-    private string m_previewNamePrefix = "No selection";
-    private string m_previewNameSuffix;
     private MaterialIconKind m_previewIcon = MaterialIconKind.FileDocumentOutline;
     private IBrush m_previewIconBrush = Brush.Parse("#AEB7C4");
     private bool m_hasSelection;
@@ -142,7 +140,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             var previous = m_preview;
             if (!SetField(ref m_preview, value))
                 return;
-            (PreviewNamePrefix, PreviewNameSuffix) = BrowserItem.SplitName(value.Name);
             OnPropertyChanged(nameof(PreviewSummary));
             OnPropertyChanged(nameof(PreviewContent));
             OnPropertyChanged(nameof(PreviewPath));
@@ -161,18 +158,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     public string PreviewSummary => Preview.Name;
-
-    public string PreviewNamePrefix
-    {
-        get => m_previewNamePrefix;
-        private set => SetField(ref m_previewNamePrefix, value);
-    }
-
-    public string PreviewNameSuffix
-    {
-        get => m_previewNameSuffix;
-        private set => SetField(ref m_previewNameSuffix, value);
-    }
 
     public string PreviewContent => Preview switch
     {
