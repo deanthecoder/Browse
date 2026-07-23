@@ -23,7 +23,7 @@ namespace Browse.Services;
 /// </remarks>
 public sealed class PreviewService
 {
-    private const int MaxPreviewBytes = 64 * 1024;
+    private const int MaxPreviewBytes = 8 * 1024;
     private const int MaxPreviewLines = 600;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {

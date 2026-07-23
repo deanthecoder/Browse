@@ -161,7 +161,7 @@ public partial class MainWindow : Window
                     m_suppressSelectionChanged = false;
                     ViewModel.SetContextSelection((FolderColumnViewModel)listBox.DataContext, [contextItem]);
                 }
-                m_focusedColumn = listBox;
+                SetFocusedColumn(listBox);
                 m_contextDestination = contextItem.IsDirectory
                     ? new DirectoryInfo(contextItem.FullPath)
                     : ((FolderColumnViewModel)listBox.DataContext).Directory;
@@ -183,7 +183,7 @@ public partial class MainWindow : Window
                                e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         if (!extendsSelection && itemContainer.DataContext is BrowserItem item)
             listBox.SelectedItem = item;
-        m_focusedColumn = listBox;
+        SetFocusedColumn(listBox);
         m_dragSource = listBox;
         m_dragStart = e.GetPosition(this);
     }
@@ -205,7 +205,7 @@ public partial class MainWindow : Window
     private void OnColumnGotFocus(object sender, GotFocusEventArgs e)
     {
         if (sender is ListBox listBox)
-            m_focusedColumn = listBox;
+            SetFocusedColumn(listBox);
     }
 
     private async void OnColumnDrop(object sender, DragEventArgs e)
@@ -378,7 +378,7 @@ public partial class MainWindow : Window
             .FirstOrDefault(listBox => ReferenceEquals(listBox.DataContext, targetColumn));
         if (targetList == null)
             return;
-        m_focusedColumn = targetList;
+        SetFocusedColumn(targetList);
         targetList.Focus();
         if (direction > 0 && targetList.SelectedIndex < 0 && targetList.ItemsView.Count > 0)
             targetList.SelectedIndex = 0;
@@ -405,6 +405,15 @@ public partial class MainWindow : Window
         m_focusedColumn.SelectedIndex = targetIndex;
         if (m_focusedColumn.SelectedItem != null)
             m_focusedColumn.ScrollIntoView(m_focusedColumn.SelectedItem);
+    }
+
+    private void SetFocusedColumn(ListBox listBox)
+    {
+        if (ReferenceEquals(m_focusedColumn, listBox))
+            return;
+        m_focusedColumn?.Classes.Remove("activeColumn");
+        m_focusedColumn = listBox;
+        m_focusedColumn?.Classes.Add("activeColumn");
     }
 
     private void SelectByTypedPrefix(string character)

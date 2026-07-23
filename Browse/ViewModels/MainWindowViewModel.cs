@@ -721,7 +721,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             PreviewKind = result.Kind;
             PreviewSummary = result.Name;
             PreviewPath = result.Path;
-            PreviewDetails = image == null ? result.Details : $"{result.Details} · {image.Width:N0} × {image.Height:N0} · {image.BitsPerPixel}-bit";
+            PreviewDetails = image == null
+                ? result.Details
+                : $"{result.Details}\n{image.Width:N0} × {image.Height:N0} · {image.BitDepth}";
             PreviewContent = result.Content;
             PreviewImagePath = result.ImagePath;
             PreviewImage = image?.Bitmap;
@@ -759,7 +761,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 decodedBitmap,
                 metadata?.Width ?? decodedBitmap.PixelSize.Width,
                 metadata?.Height ?? decodedBitmap.PixelSize.Height,
-                metadata?.BitsPerPixel ?? 32);
+                metadata?.BitDepth ?? "32 bpp preview");
         }
 
         using var tiff = Tiff.Open(path, "r") ?? throw new IOException("The TIFF file could not be opened.");
@@ -826,7 +828,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 framebuffer.Address + y * framebuffer.RowBytes,
                 previewWidth * 4);
         }
-        return new DecodedImage(bitmap, width, height, bitsPerSample * samplesPerPixel);
+        return new DecodedImage(bitmap, width, height, $"{samplesPerPixel} × {bitsPerSample} bpp");
     }
 
     private static void CopyTiffScanline(
@@ -864,7 +866,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private sealed record DecodedImage(Bitmap Bitmap, int Width, int Height, int BitsPerPixel);
+    private sealed record DecodedImage(Bitmap Bitmap, int Width, int Height, string BitDepth);
 
     private static ImageMetadata ReadImageMetadata(string path)
     {
@@ -880,18 +882,21 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 var width = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(16, 4));
                 var height = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(20, 4));
                 var channels = header[25] switch { 0 => 1, 2 => 3, 3 => 1, 4 => 2, 6 => 4, _ => 1 };
-                return new ImageMetadata(width, height, header[24] * channels);
+                return new ImageMetadata(width, height, $"{channels} × {header[24]} bpp");
             }
             if (extension.Equals(".gif", StringComparison.OrdinalIgnoreCase))
                 return new ImageMetadata(
                     BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(6, 2)),
                     BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(8, 2)),
-                    (header[10] & 0x07) + 1);
+                    $"{(header[10] & 0x07) + 1} bpp indexed");
             if (extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase))
+            {
+                var bitsPerPixel = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(28, 2));
                 return new ImageMetadata(
                     Math.Abs(BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(18, 4))),
                     Math.Abs(BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(22, 4))),
-                    BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(28, 2)));
+                    bitsPerPixel is 24 or 32 ? $"{bitsPerPixel / 8} × 8 bpp" : $"{bitsPerPixel} bpp");
+            }
             if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
                 extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
                 return ReadJpegMetadata(stream);
@@ -928,14 +933,14 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 return new ImageMetadata(
                     BinaryPrimitives.ReadUInt16BigEndian(frame.AsSpan(3, 2)),
                     BinaryPrimitives.ReadUInt16BigEndian(frame.AsSpan(1, 2)),
-                    frame[0] * frame[5]);
+                    $"{frame[5]} × {frame[0]} bpp");
             }
             stream.Seek(length - 2, SeekOrigin.Current);
         }
         return null;
     }
 
-    private sealed record ImageMetadata(int Width, int Height, int BitsPerPixel);
+    private sealed record ImageMetadata(int Width, int Height, string BitDepth);
 
     private void PopulateSidebar()
     {

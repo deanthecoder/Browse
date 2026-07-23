@@ -73,7 +73,7 @@ public sealed class PreviewServiceTests
         {
             Assert.That(result.Content, Does.EndWith("… preview truncated …"));
             Assert.That(result.Content.Split('\n').Length, Is.LessThanOrEqualTo(602));
-            Assert.That(result.Content.Length, Is.LessThan(70_000));
+            Assert.That(result.Content.Length, Is.LessThan(10_000));
         });
     }
 }
