@@ -1,8 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Browse.ViewModels"
-        xmlns:edit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
-        xmlns:md="https://github.com/whistyun/Markdown.Avalonia"
         x:Class="Browse.Views.PreviewWindow"
         x:DataType="vm:MainWindowViewModel"
         Width="920"
@@ -18,34 +16,6 @@
         <Button Grid.Column="1" Content="Open..." Click="OnOpenClicked" />
       </Grid>
     </Border>
-    <Grid Grid.Row="1" Margin="16">
-      <Image Source="{Binding PreviewImage}" Stretch="Uniform" IsVisible="{Binding IsImagePreview}" />
-      <TextBox Text="{Binding PreviewContent}"
-               IsReadOnly="True"
-               AcceptsReturn="True"
-               TextWrapping="Wrap"
-               FontFamily="Consolas"
-               Background="#111316"
-               BorderThickness="0"
-               IsVisible="{Binding IsTextPreview}" />
-      <edit:TextEditor Document="{Binding PreviewContent, Converter={StaticResource CodeDocument}}"
-                       SyntaxHighlighting="{Binding PreviewPath, Converter={StaticResource CodeHighlighting}}"
-                       IsReadOnly="True"
-                       WordWrap="False"
-                       ShowLineNumbers="True"
-                       FontFamily="Consolas"
-                       FontSize="13"
-                       Background="#111316"
-                       IsVisible="{Binding IsCodePreview}" />
-      <md:MarkdownScrollViewer Markdown="{Binding PreviewContent}" IsVisible="{Binding IsMarkdownPreview}" />
-      <ScrollViewer HorizontalScrollBarVisibility="Auto" IsVisible="{Binding IsArchivePreview}">
-        <TextBlock Text="{Binding PreviewContent}" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="11" />
-      </ScrollViewer>
-      <TextBlock Text="No larger preview is available for this item."
-                 HorizontalAlignment="Center"
-                 VerticalAlignment="Center"
-                 Classes="muted"
-                 IsVisible="{Binding IsNoPreview}" />
-    </Grid>
+    <ContentControl x:Name="PreviewHost" Grid.Row="1" Margin="16" />
   </Grid>
 </Window>

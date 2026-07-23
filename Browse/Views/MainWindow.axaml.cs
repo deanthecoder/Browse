@@ -265,7 +265,7 @@ public partial class MainWindow : Window
             ViewModel.OpenTerminal(m_contextDestination);
     }
     private void OnOpenClicked(object sender, RoutedEventArgs e) => ViewModel.OpenSelected();
-    private void OnExpandPreviewClicked(object sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(() => new PreviewWindow(ViewModel).Show(this));
+    private void OnExpandPreviewClicked(object sender, RoutedEventArgs e) => new PreviewWindow(ViewModel).Show(this);
     private void OnOpenInNewWindowClicked(object sender, RoutedEventArgs e)
     {
         var selected = ViewModel.SelectedItems.Count == 1 ? ViewModel.SelectedItems[0] : null;
