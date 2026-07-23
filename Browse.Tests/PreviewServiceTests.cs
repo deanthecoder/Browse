@@ -12,6 +12,7 @@ using System.IO.Compression;
 using Browse.Converters;
 using Browse.Models;
 using Browse.Services;
+using Browse.Services.Previews;
 using DTC.Core;
 
 namespace Browse.Tests;
@@ -19,6 +20,23 @@ namespace Browse.Tests;
 [TestFixture]
 public sealed class PreviewServiceTests
 {
+    [Test]
+    public async Task CheckFirstMatchingProviderCreatesPreview()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "sample.bin"));
+        await File.WriteAllTextAsync(file.FullName, "content");
+        var expected = new EmptyPreviewContent("Custom preview");
+        var service = new PreviewService([
+            new StubPreviewProvider(false, new EmptyPreviewContent("Wrong preview")),
+            new StubPreviewProvider(true, expected)
+        ]);
+
+        var result = await service.CreateAsync([new BrowserItem(file)]);
+
+        Assert.That(result, Is.SameAs(expected));
+    }
+
     [Test]
     public async Task CheckZipPreviewListsArchiveContents()
     {
@@ -35,8 +53,8 @@ public sealed class PreviewServiceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(result.Kind, Is.EqualTo(PreviewKind.Archive));
-            Assert.That(result.Content, Does.Contain("folder/readme.txt"));
+            Assert.That(result, Is.TypeOf<ArchivePreviewContent>());
+            Assert.That(((ArchivePreviewContent)result).Text, Does.Contain("folder/readme.txt"));
             Assert.That(result.Details, Does.Contain("1 entries"));
         });
     }
@@ -55,7 +73,8 @@ public sealed class PreviewServiceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(result.Kind, Is.EqualTo(PreviewKind.Code));
+            Assert.That(result, Is.TypeOf<TextPreviewContent>());
+            Assert.That(((TextPreviewContent)result).Mode, Is.EqualTo(TextPreviewMode.Code));
             Assert.That(highlighting, Is.Not.Null);
         });
     }
@@ -71,9 +90,19 @@ public sealed class PreviewServiceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(result.Content, Does.EndWith("… preview truncated …"));
-            Assert.That(result.Content.Split('\n').Length, Is.LessThanOrEqualTo(602));
-            Assert.That(result.Content.Length, Is.LessThan(10_000));
+            Assert.That(result, Is.TypeOf<TextPreviewContent>());
+            Assert.That(((TextPreviewContent)result).Text, Does.EndWith("… preview truncated …"));
+            Assert.That(((TextPreviewContent)result).Text.Split('\n').Length, Is.LessThanOrEqualTo(602));
+            Assert.That(((TextPreviewContent)result).Text.Length, Is.LessThan(10_000));
         });
+    }
+
+    private sealed class StubPreviewProvider(bool matches, PreviewContent content) : IPreviewProvider
+    {
+        public ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(matches);
+
+        public Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken) =>
+            Task.FromResult(content);
     }
 }

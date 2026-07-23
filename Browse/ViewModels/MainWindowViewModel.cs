@@ -10,15 +10,9 @@
 
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
-using System.Buffers.Binary;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
-using Avalonia;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 using Avalonia.Threading;
-using BitMiracle.LibTiff.Classic;
 using Browse.Models;
 using Browse.Services;
 using DTC.Core.Extensions;
@@ -51,18 +45,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private string m_goToPath;
     private string m_currentPath;
     private string m_statusText = "Ready";
-    private string m_previewSummary = "No selection";
+    private PreviewContent m_preview = new EmptyPreviewContent();
     private string m_previewNamePrefix = "No selection";
     private string m_previewNameSuffix;
-    private string m_previewContent;
-    private string m_previewImagePath;
-    private Bitmap m_previewImage;
-    private string m_previewPath;
-    private string m_previewDetails;
     private MaterialIconKind m_previewIcon = MaterialIconKind.FileDocumentOutline;
     private IBrush m_previewIconBrush = Brush.Parse("#AEB7C4");
     private bool m_hasSelection;
-    private PreviewKind m_previewKind;
     private string m_folderSize;
     private string m_renameText;
     private bool m_isRenameVisible;
@@ -146,16 +134,33 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public string PreviewSummary
+    public PreviewContent Preview
     {
-        get => m_previewSummary;
+        get => m_preview;
         private set
         {
-            if (!SetField(ref m_previewSummary, value))
+            var previous = m_preview;
+            if (!SetField(ref m_preview, value))
                 return;
-            (PreviewNamePrefix, PreviewNameSuffix) = BrowserItem.SplitName(value);
+            (PreviewNamePrefix, PreviewNameSuffix) = BrowserItem.SplitName(value.Name);
+            OnPropertyChanged(nameof(PreviewSummary));
+            OnPropertyChanged(nameof(PreviewContent));
+            OnPropertyChanged(nameof(PreviewPath));
+            OnPropertyChanged(nameof(PreviewDetails));
+            OnPropertyChanged(nameof(PreviewImage));
+            OnPropertyChanged(nameof(IsTextPreview));
+            OnPropertyChanged(nameof(IsCodePreview));
+            OnPropertyChanged(nameof(IsMarkdownPreview));
+            OnPropertyChanged(nameof(IsArchivePreview));
+            OnPropertyChanged(nameof(IsImagePreview));
+            OnPropertyChanged(nameof(IsFolderPreview));
+            OnPropertyChanged(nameof(IsNoPreview));
+            OnPropertyChanged(nameof(CanExpandPreview));
+            previous?.Dispose();
         }
     }
+
+    public string PreviewSummary => Preview.Name;
 
     public string PreviewNamePrefix
     {
@@ -169,23 +174,15 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         private set => SetField(ref m_previewNameSuffix, value);
     }
 
-    public string PreviewContent
+    public string PreviewContent => Preview switch
     {
-        get => m_previewContent;
-        private set => SetField(ref m_previewContent, value);
-    }
+        TextPreviewContent text => text.Text,
+        ArchivePreviewContent archive => archive.Text,
+        _ => null
+    };
 
-    public string PreviewPath
-    {
-        get => m_previewPath;
-        private set => SetField(ref m_previewPath, value);
-    }
-
-    public string PreviewDetails
-    {
-        get => m_previewDetails;
-        private set => SetField(ref m_previewDetails, value);
-    }
+    public string PreviewPath => Preview.Path;
+    public string PreviewDetails => Preview.Details;
 
     public MaterialIconKind PreviewIcon
     {
@@ -209,49 +206,15 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public string PreviewImagePath
-    {
-        get => m_previewImagePath;
-        private set => SetField(ref m_previewImagePath, value);
-    }
-
-    public Bitmap PreviewImage
-    {
-        get => m_previewImage;
-        private set
-        {
-            var previous = m_previewImage;
-            if (SetField(ref m_previewImage, value))
-                previous?.Dispose();
-        }
-    }
-
-    public PreviewKind PreviewKind
-    {
-        get => m_previewKind;
-        private set
-        {
-            if (!SetField(ref m_previewKind, value))
-                return;
-            OnPropertyChanged(nameof(IsTextPreview));
-            OnPropertyChanged(nameof(IsCodePreview));
-            OnPropertyChanged(nameof(IsMarkdownPreview));
-            OnPropertyChanged(nameof(IsArchivePreview));
-            OnPropertyChanged(nameof(IsImagePreview));
-            OnPropertyChanged(nameof(IsFolderPreview));
-            OnPropertyChanged(nameof(IsNoPreview));
-            OnPropertyChanged(nameof(CanExpandPreview));
-        }
-    }
-
-    public bool IsTextPreview => PreviewKind == PreviewKind.Text;
-    public bool IsCodePreview => PreviewKind == PreviewKind.Code;
-    public bool IsMarkdownPreview => PreviewKind == PreviewKind.Markdown;
-    public bool IsArchivePreview => PreviewKind == PreviewKind.Archive;
-    public bool IsImagePreview => PreviewKind == PreviewKind.Image;
-    public bool IsFolderPreview => PreviewKind == PreviewKind.Folder;
-    public bool IsNoPreview => HasSelection && PreviewKind is PreviewKind.None or PreviewKind.Multiple;
-    public bool CanExpandPreview => PreviewKind is PreviewKind.Text or PreviewKind.Code or PreviewKind.Markdown or PreviewKind.Archive or PreviewKind.Image;
+    public Avalonia.Media.Imaging.Bitmap PreviewImage => (Preview as ImagePreviewContent)?.Image;
+    public bool IsTextPreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Plain };
+    public bool IsCodePreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Code };
+    public bool IsMarkdownPreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown };
+    public bool IsArchivePreview => Preview is ArchivePreviewContent;
+    public bool IsImagePreview => Preview is ImagePreviewContent;
+    public bool IsFolderPreview => Preview is FolderPreviewContent;
+    public bool IsNoPreview => HasSelection && Preview is EmptyPreviewContent or MultiplePreviewContent;
+    public bool CanExpandPreview => Preview.CanExpand;
 
     public string FolderSize
     {
@@ -762,21 +725,17 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_previewCancellation.Cancel();
         m_previewCancellation.Dispose();
         m_previewCancellation = new CancellationTokenSource();
+        var cancellation = m_previewCancellation;
+        var cancellationToken = cancellation.Token;
         try
         {
-            var result = await m_previewService.CreateAsync(m_selectedItems, m_previewCancellation.Token);
-            DecodedImage image = null;
-            if (!string.IsNullOrWhiteSpace(result.ImagePath))
-                image = await Task.Run(() => DecodePreviewImage(result.ImagePath), m_previewCancellation.Token);
-            PreviewKind = result.Kind;
-            PreviewSummary = result.Name;
-            PreviewPath = result.Path;
-            PreviewDetails = image == null
-                ? result.Details
-                : $"{result.Details}\n{image.Width:N0} × {image.Height:N0} · {image.BitDepth}";
-            PreviewContent = result.Content;
-            PreviewImagePath = result.ImagePath;
-            PreviewImage = image?.Bitmap;
+            var preview = await m_previewService.CreateAsync(m_selectedItems, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                preview.Dispose();
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            Preview = preview;
             HasSelection = m_selectedItems.Count > 0;
             if (m_selectedItems.Count == 1)
             {
@@ -790,207 +749,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
-            PreviewKind = PreviewKind.None;
-            PreviewImage = null;
-            PreviewContent = null;
-            PreviewDetails = $"Preview unavailable · {ex.Message}";
+            Preview = new EmptyPreviewContent(
+                m_selectedItems.Count == 1 ? m_selectedItems[0].Name : "Preview unavailable",
+                details: $"Preview unavailable · {ex.Message}");
             HasSelection = m_selectedItems.Count > 0;
         }
     }
-
-    private static DecodedImage DecodePreviewImage(string path)
-    {
-        var extension = Path.GetExtension(path);
-        if (!extension.Equals(".tif", StringComparison.OrdinalIgnoreCase) &&
-            !extension.Equals(".tiff", StringComparison.OrdinalIgnoreCase))
-        {
-            using var fileStream = File.OpenRead(path);
-            var decodedBitmap = Bitmap.DecodeToHeight(fileStream, 700, BitmapInterpolationMode.MediumQuality);
-            var metadata = ReadImageMetadata(path);
-            return new DecodedImage(
-                decodedBitmap,
-                metadata?.Width ?? decodedBitmap.PixelSize.Width,
-                metadata?.Height ?? decodedBitmap.PixelSize.Height,
-                metadata?.BitDepth ?? "32 bpp preview");
-        }
-
-        using var tiff = Tiff.Open(path, "r") ?? throw new IOException("The TIFF file could not be opened.");
-        var width = tiff.GetField(TiffTag.IMAGEWIDTH)[0].ToInt();
-        var height = tiff.GetField(TiffTag.IMAGELENGTH)[0].ToInt();
-        var bitsPerSample = tiff.GetFieldDefaulted(TiffTag.BITSPERSAMPLE)[0].ToInt();
-        var samplesPerPixel = tiff.GetFieldDefaulted(TiffTag.SAMPLESPERPIXEL)[0].ToInt();
-        var photometric = (Photometric)tiff.GetFieldDefaulted(TiffTag.PHOTOMETRIC)[0].ToInt();
-        var planarConfig = (PlanarConfig)tiff.GetFieldDefaulted(TiffTag.PLANARCONFIG)[0].ToInt();
-        var scale = Math.Min(1.0, 700.0 / Math.Max(width, height));
-        var previewWidth = Math.Max(1, (int)Math.Round(width * scale));
-        var previewHeight = Math.Max(1, (int)Math.Round(height * scale));
-        var pixels = new byte[previewWidth * previewHeight * 4];
-        if (bitsPerSample == 8 && planarConfig == PlanarConfig.CONTIG &&
-            (photometric == Photometric.RGB || photometric is Photometric.MINISBLACK or Photometric.MINISWHITE))
-        {
-            var scanline = new byte[tiff.ScanlineSize()];
-            var targetY = 0;
-            for (var sourceY = 0; sourceY < height && targetY < previewHeight; sourceY++)
-            {
-                if (!tiff.ReadScanline(scanline, sourceY))
-                    throw new IOException("The TIFF image could not be decoded.");
-                if (sourceY != Math.Min(height - 1, (int)(targetY / scale)))
-                    continue;
-                CopyTiffScanline(scanline, pixels, targetY, previewWidth, width, scale, samplesPerPixel, photometric);
-                targetY++;
-            }
-        }
-        else
-        {
-            const int maxFallbackPixels = 16 * 1024 * 1024;
-            if ((long)width * height > maxFallbackPixels)
-                throw new IOException("This TIFF format is too large to preview safely.");
-            var raster = new int[checked(width * height)];
-            if (!tiff.ReadRGBAImageOriented(width, height, raster, Orientation.TOPLEFT))
-                throw new IOException("The TIFF image could not be decoded.");
-            for (var y = 0; y < previewHeight; y++)
-            {
-                var sourceY = Math.Min(height - 1, (int)(y / scale));
-                for (var x = 0; x < previewWidth; x++)
-                {
-                    var sourceX = Math.Min(width - 1, (int)(x / scale));
-                    var rgba = raster[sourceY * width + sourceX];
-                    var offset = (y * previewWidth + x) * 4;
-                    pixels[offset] = (byte)Tiff.GetB(rgba);
-                    pixels[offset + 1] = (byte)Tiff.GetG(rgba);
-                    pixels[offset + 2] = (byte)Tiff.GetR(rgba);
-                    pixels[offset + 3] = (byte)Tiff.GetA(rgba);
-                }
-            }
-        }
-
-        var bitmap = new WriteableBitmap(
-            new PixelSize(previewWidth, previewHeight),
-            new Vector(96, 96),
-            PixelFormat.Bgra8888,
-            AlphaFormat.Unpremul);
-        using var framebuffer = bitmap.Lock();
-        for (var y = 0; y < previewHeight; y++)
-        {
-            Marshal.Copy(
-                pixels,
-                y * previewWidth * 4,
-                framebuffer.Address + y * framebuffer.RowBytes,
-                previewWidth * 4);
-        }
-        return new DecodedImage(bitmap, width, height, $"{samplesPerPixel} × {bitsPerSample} bpp");
-    }
-
-    private static void CopyTiffScanline(
-        byte[] scanline,
-        byte[] pixels,
-        int targetY,
-        int previewWidth,
-        int sourceWidth,
-        double scale,
-        int samplesPerPixel,
-        Photometric photometric)
-    {
-        for (var x = 0; x < previewWidth; x++)
-        {
-            var sourceX = Math.Min(sourceWidth - 1, (int)(x / scale));
-            var sourceOffset = sourceX * samplesPerPixel;
-            var targetOffset = (targetY * previewWidth + x) * 4;
-            if (photometric == Photometric.RGB)
-            {
-                pixels[targetOffset] = scanline[sourceOffset + 2];
-                pixels[targetOffset + 1] = scanline[sourceOffset + 1];
-                pixels[targetOffset + 2] = scanline[sourceOffset];
-                pixels[targetOffset + 3] = samplesPerPixel > 3 ? scanline[sourceOffset + 3] : (byte)255;
-            }
-            else
-            {
-                var intensity = scanline[sourceOffset];
-                if (photometric == Photometric.MINISWHITE)
-                    intensity = (byte)(255 - intensity);
-                pixels[targetOffset] = intensity;
-                pixels[targetOffset + 1] = intensity;
-                pixels[targetOffset + 2] = intensity;
-                pixels[targetOffset + 3] = samplesPerPixel > 1 ? scanline[sourceOffset + 1] : (byte)255;
-            }
-        }
-    }
-
-    private sealed record DecodedImage(Bitmap Bitmap, int Width, int Height, string BitDepth);
-
-    private static ImageMetadata ReadImageMetadata(string path)
-    {
-        try
-        {
-            using var stream = File.OpenRead(path);
-            var header = new byte[32];
-            if (stream.Read(header, 0, header.Length) < 30)
-                return null;
-            var extension = Path.GetExtension(path);
-            if (extension.Equals(".png", StringComparison.OrdinalIgnoreCase))
-            {
-                var width = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(16, 4));
-                var height = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(20, 4));
-                var channels = header[25] switch { 0 => 1, 2 => 3, 3 => 1, 4 => 2, 6 => 4, _ => 1 };
-                return new ImageMetadata(width, height, $"{channels} × {header[24]} bpp");
-            }
-            if (extension.Equals(".gif", StringComparison.OrdinalIgnoreCase))
-                return new ImageMetadata(
-                    BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(6, 2)),
-                    BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(8, 2)),
-                    $"{(header[10] & 0x07) + 1} bpp indexed");
-            if (extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase))
-            {
-                var bitsPerPixel = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(28, 2));
-                return new ImageMetadata(
-                    Math.Abs(BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(18, 4))),
-                    Math.Abs(BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(22, 4))),
-                    bitsPerPixel is 24 or 32 ? $"{bitsPerPixel / 8} × 8 bpp" : $"{bitsPerPixel} bpp");
-            }
-            if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
-                return ReadJpegMetadata(stream);
-        }
-        catch (Exception)
-        {
-            // Metadata is optional; image decoding can still proceed.
-        }
-        return null;
-    }
-
-    private static ImageMetadata ReadJpegMetadata(Stream stream)
-    {
-        stream.Position = 2;
-        while (stream.Position < stream.Length - 8)
-        {
-            if (stream.ReadByte() != 0xff)
-                continue;
-            int marker;
-            do marker = stream.ReadByte(); while (marker == 0xff);
-            if (marker < 0)
-                break;
-            var lengthBytes = new byte[2];
-            if (stream.Read(lengthBytes, 0, 2) != 2)
-                break;
-            var length = BinaryPrimitives.ReadUInt16BigEndian(lengthBytes);
-            if (length < 2)
-                break;
-            if (marker is 0xc0 or 0xc1 or 0xc2 or 0xc3 or 0xc5 or 0xc6 or 0xc7 or 0xc9 or 0xca or 0xcb or 0xcd or 0xce or 0xcf)
-            {
-                var frame = new byte[6];
-                if (stream.Read(frame, 0, frame.Length) != frame.Length)
-                    break;
-                return new ImageMetadata(
-                    BinaryPrimitives.ReadUInt16BigEndian(frame.AsSpan(3, 2)),
-                    BinaryPrimitives.ReadUInt16BigEndian(frame.AsSpan(1, 2)),
-                    $"{frame[5]} × {frame[0]} bpp");
-            }
-            stream.Seek(length - 2, SeekOrigin.Current);
-        }
-        return null;
-    }
-
-    private sealed record ImageMetadata(int Width, int Height, string BitDepth);
 
     private void PopulateSidebar()
     {
@@ -1084,13 +848,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void ClearPreview()
     {
-        PreviewKind = PreviewKind.None;
-        PreviewSummary = "No selection";
-        PreviewPath = null;
-        PreviewDetails = null;
-        PreviewContent = null;
-        PreviewImagePath = null;
-        PreviewImage = null;
+        Preview = new EmptyPreviewContent();
         HasSelection = false;
         FolderSize = null;
         FolderSizeExact = null;
@@ -1162,7 +920,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_navigationCancellation.Dispose();
         m_previewCancellation.Cancel();
         m_previewCancellation.Dispose();
-        m_previewImage?.Dispose();
+        m_preview.Dispose();
     }
 
     private static string ExpandPath(string path)

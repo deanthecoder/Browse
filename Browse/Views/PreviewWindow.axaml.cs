@@ -19,6 +19,7 @@ using Avalonia.Threading;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Highlighting;
+using Browse.Models;
 using Browse.Services;
 using Browse.ViewModels;
 using Markdown.Avalonia;
@@ -69,10 +70,7 @@ public partial class PreviewWindow : Window
 
     private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainWindowViewModel.PreviewKind) or
-            nameof(MainWindowViewModel.PreviewContent) or
-            nameof(MainWindowViewModel.PreviewImage) or
-            nameof(MainWindowViewModel.PreviewPath))
+        if (e.PropertyName == nameof(MainWindowViewModel.Preview))
             QueuePreviewUpdate();
     }
 
@@ -93,13 +91,13 @@ public partial class PreviewWindow : Window
     {
         if (m_viewModel == null)
             return CreateMessage("No larger preview is available for this item.");
-        if (m_viewModel.IsImagePreview)
-            return new Image { Source = m_viewModel.PreviewImage, Stretch = Stretch.Uniform };
-        if (m_viewModel.IsTextPreview)
+        if (m_viewModel.Preview is ImagePreviewContent image)
+            return new Image { Source = image.Image, Stretch = Stretch.Uniform };
+        if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Plain } plainText)
         {
             return new TextBox
             {
-                Text = m_viewModel.PreviewContent,
+                Text = plainText.Text,
                 IsReadOnly = true,
                 AcceptsReturn = true,
                 TextWrapping = TextWrapping.Wrap,
@@ -108,12 +106,12 @@ public partial class PreviewWindow : Window
                 BorderThickness = new Thickness(0)
             };
         }
-        if (m_viewModel.IsCodePreview)
+        if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Code } code)
         {
             return new TextEditor
             {
-                Document = new TextDocument(m_viewModel.PreviewContent ?? string.Empty),
-                SyntaxHighlighting = HighlightingManager.Instance.GetDefinitionByExtension(Path.GetExtension(m_viewModel.PreviewPath)),
+                Document = new TextDocument(code.Text),
+                SyntaxHighlighting = HighlightingManager.Instance.GetDefinitionByExtension(Path.GetExtension(code.Path)),
                 IsReadOnly = true,
                 WordWrap = false,
                 ShowLineNumbers = true,
@@ -122,16 +120,16 @@ public partial class PreviewWindow : Window
                 Background = Brush.Parse("#111316")
             };
         }
-        if (m_viewModel.IsMarkdownPreview)
-            return new MarkdownScrollViewer { Markdown = m_viewModel.PreviewContent };
-        if (m_viewModel.IsArchivePreview)
+        if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown } markdown)
+            return new MarkdownScrollViewer { Markdown = markdown.Text };
+        if (m_viewModel.Preview is ArchivePreviewContent archive)
         {
             return new ScrollViewer
             {
                 HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
                 Content = new TextBlock
                 {
-                    Text = m_viewModel.PreviewContent,
+                    Text = archive.Text,
                     TextWrapping = TextWrapping.NoWrap,
                     FontFamily = new FontFamily("Consolas"),
                     FontSize = 11
