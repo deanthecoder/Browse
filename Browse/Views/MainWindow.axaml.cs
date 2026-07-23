@@ -321,7 +321,12 @@ public partial class MainWindow : Window
         if (!hasModalOverlay && primaryModifier && e.Key == Key.G)
         {
             ViewModel.ShowGoTo();
-            Dispatcher.UIThread.Post(() => GoToTextBox.Focus());
+            Dispatcher.UIThread.Post(() =>
+            {
+                GoToTextBox.Focus();
+                GoToTextBox.CaretIndex = GoToTextBox.Text?.Length ?? 0;
+                GoToTextBox.SelectAll();
+            });
             e.Handled = true;
         }
         else if (!hasModalOverlay && primaryModifier && e.Key == Key.C)
