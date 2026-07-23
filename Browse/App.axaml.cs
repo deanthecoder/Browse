@@ -92,16 +92,16 @@ public class App : Application
     {
         var menu = new NativeMenu
         {
-            new NativeMenuItem("New Browse window...")
+            new NativeMenuItem(GetTrayMenuLabel("New Browse window..."))
             {
                 Command = new RelayCommand(_ => CreateWindow())
             },
-            new NativeMenuItem("About Browse")
+            new NativeMenuItem(GetTrayMenuLabel("About Browse"))
             {
                 Command = new RelayCommand(_ => ShowAbout())
             },
             new NativeMenuItemSeparator(),
-            new NativeMenuItem("Exit")
+            new NativeMenuItem(GetTrayMenuLabel("Exit"))
             {
                 Command = new RelayCommand(_ => desktop.Shutdown())
             }
@@ -114,6 +114,9 @@ public class App : Application
             ToolTipText = "Browse"
         };
     }
+
+    private static string GetTrayMenuLabel(string text) =>
+        OperatingSystem.IsWindows() ? $"\u2002{text}\u2002" : text;
 
     private static void ShowAbout()
     {
