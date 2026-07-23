@@ -303,6 +303,9 @@ public partial class MainWindow : Window
     private async void OnCreateZipClicked(object sender, RoutedEventArgs e) => await ViewModel.CreateZipAsync();
     private async void OnDeleteClicked(object sender, RoutedEventArgs e) => await ViewModel.DeleteSelectionAsync();
     private async void OnCopyPathsClicked(object sender, RoutedEventArgs e) => await CopyTextAsync(ViewModel.GetSelectedPaths());
+    private async void OnCopyMd5Clicked(object sender, RoutedEventArgs e) => await CopyGeneratedTextAsync(ViewModel.GetMd5TextAsync());
+    private async void OnCopySha256Clicked(object sender, RoutedEventArgs e) => await CopyGeneratedTextAsync(ViewModel.GetSha256TextAsync());
+    private async void OnCopyBase64Clicked(object sender, RoutedEventArgs e) => await CopyGeneratedTextAsync(ViewModel.GetBase64TextAsync());
     private async void OnWindowKeyDown(object sender, KeyEventArgs e)
     {
         var hasModalOverlay = ViewModel.IsGoToVisible || ViewModel.IsRenameVisible ||
@@ -508,6 +511,13 @@ public partial class MainWindow : Window
         var clipboard = Clipboard;
         if (clipboard != null)
             await clipboard.SetTextAsync(text);
+    }
+
+    private async Task CopyGeneratedTextAsync(Task<string> generateText)
+    {
+        var text = await generateText;
+        if (!string.IsNullOrEmpty(text))
+            await CopyTextAsync(text);
     }
 
     private async Task CopySelectionAsync(bool cut)

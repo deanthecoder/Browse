@@ -11,6 +11,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using Browse.Models;
 using Microsoft.VisualBasic.FileIO;
 
@@ -24,6 +25,7 @@ namespace Browse.Services;
 /// </remarks>
 public sealed class FileOperationService
 {
+    private const long MaxBase64Bytes = 32 * 1024 * 1024;
     public Task CopyAsync(IReadOnlyList<BrowserItem> items, DirectoryInfo destination, bool move, CancellationToken cancellationToken = default) =>
         Task.Run(() =>
         {
@@ -123,6 +125,36 @@ public sealed class FileOperationService
     {
         var startInfo = new ProcessStartInfo(item.FullPath) { UseShellExecute = true };
         Process.Start(startInfo);
+    }
+
+    public async Task<string> CalculateHashAsync(
+        FileInfo file,
+        HashAlgorithmName algorithm,
+        CancellationToken cancellationToken = default)
+    {
+        await using var stream = new FileStream(
+            file.FullName,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite,
+            64 * 1024,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        using HashAlgorithm hashAlgorithm = algorithm == HashAlgorithmName.MD5
+            ? MD5.Create()
+            : algorithm == HashAlgorithmName.SHA256
+                ? SHA256.Create()
+                : throw new ArgumentOutOfRangeException(nameof(algorithm));
+        var hash = await hashAlgorithm.ComputeHashAsync(stream, cancellationToken);
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    public async Task<string> EncodeBase64Async(FileInfo file, CancellationToken cancellationToken = default)
+    {
+        file.Refresh();
+        if (file.Length > MaxBase64Bytes)
+            throw new IOException("Base64 copying is limited to files of 32 MB or less.");
+        var bytes = await File.ReadAllBytesAsync(file.FullName, cancellationToken);
+        return Convert.ToBase64String(bytes);
     }
 
     public void OpenTerminal(DirectoryInfo directory, string configuredCommand = null)

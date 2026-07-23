@@ -41,6 +41,11 @@
       <MenuItem Header="New folder..." Click="OnNewFolderClicked" IsVisible="{Binding IsDirectory}" />
       <Separator />
       <MenuItem Header="Copy full path(s)" Click="OnCopyPathsClicked" />
+      <MenuItem Header="Advanced" IsVisible="{Binding !IsDirectory}">
+        <MenuItem Header="Copy MD5 hash" Click="OnCopyMd5Clicked" />
+        <MenuItem Header="Copy SHA-256 hash" Click="OnCopySha256Clicked" />
+        <MenuItem Header="Copy as Base64" Click="OnCopyBase64Clicked" />
+      </MenuItem>
       <Separator />
       <MenuItem Header="Compress" Click="OnCreateZipClicked" />
       <MenuItem Header="Delete" Click="OnDeleteClicked" />

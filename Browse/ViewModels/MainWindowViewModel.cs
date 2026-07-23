@@ -12,6 +12,7 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -487,6 +488,31 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public string GetSelectedPaths(bool namesOnly = false) => JoinPaths(m_selectedItems, namesOnly);
 
+    public Task<string> GetMd5TextAsync() => GetHashTextAsync(HashAlgorithmName.MD5, "MD5");
+    public Task<string> GetSha256TextAsync() => GetHashTextAsync(HashAlgorithmName.SHA256, "SHA-256");
+
+    public async Task<string> GetBase64TextAsync()
+    {
+        var files = m_selectedItems.Where(item => !item.IsDirectory).ToArray();
+        if (files.Length != 1)
+        {
+            StatusText = "Select one file to copy as Base64.";
+            return null;
+        }
+        try
+        {
+            StatusText = $"Encoding {files[0].Name}…";
+            var encoded = await m_fileOperationService.EncodeBase64Async((FileInfo)files[0].Info);
+            StatusText = "Base64 copied to the clipboard.";
+            return encoded;
+        }
+        catch (Exception ex)
+        {
+            StatusText = ex.Message;
+            return null;
+        }
+    }
+
     public void OpenSelected()
     {
         if (m_selectedItems.Count != 1)
@@ -505,6 +531,30 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                     ? "Open canceled."
                     : $"Could not open {m_selectedItems[0].Name}: {ex.Message}";
             }
+        }
+    }
+
+    private async Task<string> GetHashTextAsync(HashAlgorithmName algorithm, string displayName)
+    {
+        var files = m_selectedItems.Where(item => !item.IsDirectory).ToArray();
+        if (files.Length == 0)
+            return null;
+        try
+        {
+            StatusText = $"Calculating {displayName}…";
+            var lines = new List<string>(files.Length);
+            foreach (var item in files)
+            {
+                var hash = await m_fileOperationService.CalculateHashAsync((FileInfo)item.Info, algorithm);
+                lines.Add(files.Length == 1 ? hash : $"{hash}  {item.Name}");
+            }
+            StatusText = $"{displayName} copied to the clipboard.";
+            return string.Join(Environment.NewLine, lines);
+        }
+        catch (Exception ex)
+        {
+            StatusText = ex.Message;
+            return null;
         }
     }
 
