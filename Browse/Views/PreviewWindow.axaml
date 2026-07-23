@@ -12,8 +12,11 @@
         Title="Browse Preview"
         KeyDown="OnKeyDown">
   <Grid Background="#17191D" RowDefinitions="Auto,*">
-    <Border Grid.Row="0" Background="#24272D" BorderBrush="#3B4049" BorderThickness="0,0,0,1" Padding="14,10">
-      <TextBlock Text="{Binding PreviewSummary}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" />
+    <Border Grid.Row="0" Background="#24272D" BorderBrush="#3B4049" BorderThickness="0,0,0,1" Padding="14,8">
+      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <TextBlock Text="{Binding PreviewSummary}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Content="Open..." Click="OnOpenClicked" />
+      </Grid>
     </Border>
     <Grid Grid.Row="1" Margin="16">
       <Image Source="{Binding PreviewImage}" Stretch="Uniform" IsVisible="{Binding IsImagePreview}" />

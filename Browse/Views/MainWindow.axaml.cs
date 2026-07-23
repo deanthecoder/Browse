@@ -35,7 +35,12 @@ public partial class MainWindow : Window
     private ListBox m_dragSource;
     private ListBox m_focusedColumn;
     private ContextMenu m_pendingContextMenu;
+    private ContextMenu m_openContextMenu;
     private string[] m_externalClipboardPaths = [];
+    private DirectoryInfo m_contextDestination;
+    private bool m_suppressSelectionChanged;
+    private string m_typeSearch = string.Empty;
+    private DateTime m_lastTypeSearch;
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext;
 
     public MainWindow() : this(new MainWindowViewModel(
@@ -74,6 +79,13 @@ public partial class MainWindow : Window
     {
         if (sender is not ListBox { DataContext: FolderColumnViewModel column } listBox)
             return;
+        if (m_suppressSelectionChanged)
+            return;
+        if (column.IsRefreshing)
+        {
+            Dispatcher.UIThread.Post(() => RestoreColumnSelection(listBox, column), DispatcherPriority.Background);
+            return;
+        }
         var previousColumnCount = ViewModel.Columns.Count;
         var selection = listBox.SelectedItems.Cast<BrowserItem>().ToArray();
         await ViewModel.SelectAsync(column, selection);
@@ -132,7 +144,7 @@ public partial class MainWindow : Window
             return;
         var listBox = source as ListBox ?? source.FindAncestorOfType<ListBox>();
         var itemContainer = source as ListBoxItem ?? source.FindAncestorOfType<ListBoxItem>();
-        if (listBox == null || itemContainer == null)
+        if (listBox == null)
             return;
         var updateKind = e.GetCurrentPoint(this).Properties.PointerUpdateKind;
         if (updateKind == PointerUpdateKind.RightButtonPressed)
@@ -143,15 +155,28 @@ public partial class MainWindow : Window
             if (itemGrid?.Tag is BrowserItem contextItem)
             {
                 if (!listBox.SelectedItems.Contains(contextItem))
+                {
+                    m_suppressSelectionChanged = true;
                     listBox.SelectedItem = contextItem;
+                    m_suppressSelectionChanged = false;
+                    ViewModel.SetContextSelection((FolderColumnViewModel)listBox.DataContext, [contextItem]);
+                }
                 m_focusedColumn = listBox;
+                m_contextDestination = contextItem.IsDirectory
+                    ? new DirectoryInfo(contextItem.FullPath)
+                    : ((FolderColumnViewModel)listBox.DataContext).Directory;
                 m_pendingContextMenu = (ContextMenu)Resources["ItemContextMenu"];
                 m_pendingContextMenu.DataContext = contextItem;
-                e.Handled = true;
             }
+            else
+            {
+                m_contextDestination = ((FolderColumnViewModel)listBox.DataContext).Directory;
+                m_pendingContextMenu = (ContextMenu)Resources["ColumnContextMenu"];
+            }
+            e.Handled = true;
             return;
         }
-        if (updateKind != PointerUpdateKind.LeftButtonPressed)
+        if (updateKind != PointerUpdateKind.LeftButtonPressed || itemContainer == null)
             return;
         var extendsSelection = e.KeyModifiers.HasFlag(KeyModifiers.Control) ||
                                e.KeyModifiers.HasFlag(KeyModifiers.Meta) ||
@@ -171,6 +196,7 @@ public partial class MainWindow : Window
         {
             m_pendingContextMenu = null;
             await UpdatePasteAvailabilityAsync(contextMenu);
+            m_openContextMenu = contextMenu;
             contextMenu.Open(this);
             e.Handled = true;
         }
@@ -231,9 +257,15 @@ public partial class MainWindow : Window
 
     private void OnSettingsClicked(object sender, RoutedEventArgs e) => ViewModel.IsSettingsVisible = true;
     private void OnSettingsCloseClicked(object sender, RoutedEventArgs e) => ViewModel.IsSettingsVisible = false;
+    private void OnResetFavoritesClicked(object sender, RoutedEventArgs e) => ViewModel.ResetFavorites();
     private void OnTerminalClicked(object sender, RoutedEventArgs e) => ViewModel.OpenTerminal();
+    private void OnColumnTerminalClicked(object sender, RoutedEventArgs e)
+    {
+        if (m_contextDestination != null)
+            ViewModel.OpenTerminal(m_contextDestination);
+    }
     private void OnOpenClicked(object sender, RoutedEventArgs e) => ViewModel.OpenSelected();
-    private void OnExpandPreviewClicked(object sender, RoutedEventArgs e) => new PreviewWindow(ViewModel).Show(this);
+    private void OnExpandPreviewClicked(object sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(() => new PreviewWindow(ViewModel).Show(this));
     private void OnOpenInNewWindowClicked(object sender, RoutedEventArgs e)
     {
         var selected = ViewModel.SelectedItems.Count == 1 ? ViewModel.SelectedItems[0] : null;
@@ -242,10 +274,30 @@ public partial class MainWindow : Window
             : selected == null ? ViewModel.CurrentPath : Path.GetDirectoryName(selected.FullPath);
         (Application.Current as App)?.OpenWindow(path);
     }
-    private async void OnCutClicked(object sender, RoutedEventArgs e) => await CopySelectionAsync(true);
-    private async void OnCopyClicked(object sender, RoutedEventArgs e) => await CopySelectionAsync(false);
+    private async void OnCutClicked(object sender, RoutedEventArgs e)
+    {
+        await CopySelectionAsync(true);
+        CloseContextMenu();
+    }
+    private async void OnCopyClicked(object sender, RoutedEventArgs e)
+    {
+        await CopySelectionAsync(false);
+        CloseContextMenu();
+    }
     private async void OnPasteClicked(object sender, RoutedEventArgs e)
-        => await PasteSelectionAsync();
+    {
+        await PasteSelectionAsync(m_contextDestination);
+        CloseContextMenu();
+    }
+    private void OnNewFolderClicked(object sender, RoutedEventArgs e)
+    {
+        ViewModel.BeginCreateFolder(m_contextDestination);
+        Dispatcher.UIThread.Post(() =>
+        {
+            NewFolderTextBox.Focus();
+            NewFolderTextBox.SelectAll();
+        });
+    }
     private void OnRenameClicked(object sender, RoutedEventArgs e) => BeginRename();
     private async void OnCalculateSizeClicked(object sender, RoutedEventArgs e) => await ViewModel.CalculateFolderSizeAsync();
     private async void OnCreateZipClicked(object sender, RoutedEventArgs e) => await ViewModel.CreateZipAsync();
@@ -253,8 +305,9 @@ public partial class MainWindow : Window
     private async void OnCopyPathsClicked(object sender, RoutedEventArgs e) => await CopyTextAsync(ViewModel.GetSelectedPaths());
     private async void OnWindowKeyDown(object sender, KeyEventArgs e)
     {
-        if (!ViewModel.IsGoToVisible && !ViewModel.IsRenameVisible && !ViewModel.IsSettingsVisible &&
-            e.Key is Key.Left or Key.Right)
+        var hasModalOverlay = ViewModel.IsGoToVisible || ViewModel.IsRenameVisible ||
+                              ViewModel.IsSettingsVisible || ViewModel.IsNewFolderVisible;
+        if (!hasModalOverlay && e.Key is Key.Left or Key.Right)
         {
             MoveColumnFocus(e.Key == Key.Left ? -1 : 1);
             e.Handled = true;
@@ -262,30 +315,35 @@ public partial class MainWindow : Window
         }
         var primaryModifier = e.KeyModifiers.HasFlag(KeyModifiers.Control) ||
                               e.KeyModifiers.HasFlag(KeyModifiers.Meta);
-        if (primaryModifier && e.Key == Key.G)
+        if (!hasModalOverlay && primaryModifier && e.Key == Key.G)
         {
             ViewModel.ShowGoTo();
             Dispatcher.UIThread.Post(() => GoToTextBox.Focus());
             e.Handled = true;
         }
-        else if (primaryModifier && e.Key == Key.C)
+        else if (!hasModalOverlay && primaryModifier && e.Key == Key.C)
         {
             await CopySelectionAsync(false);
             e.Handled = true;
         }
-        else if (primaryModifier && e.Key == Key.X)
+        else if (!hasModalOverlay && primaryModifier && e.Key == Key.X)
         {
             await CopySelectionAsync(true);
             e.Handled = true;
         }
-        else if (primaryModifier && e.Key == Key.V)
+        else if (!hasModalOverlay && primaryModifier && e.Key == Key.V)
         {
             await PasteSelectionAsync();
             e.Handled = true;
         }
-        else if (e.Key == Key.F2)
+        else if (!hasModalOverlay && e.Key == Key.F2)
         {
             BeginRename();
+            e.Handled = true;
+        }
+        else if (!hasModalOverlay && e.Key == Key.Delete)
+        {
+            await ViewModel.DeleteSelectionAsync();
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
@@ -293,10 +351,16 @@ public partial class MainWindow : Window
             ViewModel.IsGoToVisible = false;
             ViewModel.IsRenameVisible = false;
             ViewModel.IsSettingsVisible = false;
+            ViewModel.IsNewFolderVisible = false;
         }
-        else if (e.KeyModifiers == KeyModifiers.None && e.Key is Key.Up or Key.Down)
+        else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key is Key.Up or Key.Down)
         {
             MoveColumnSelection(e.Key == Key.Up ? -1 : 1);
+            e.Handled = true;
+        }
+        else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.KeySymbol is { Length: 1 } symbol && !char.IsControl(symbol[0]))
+        {
+            SelectByTypedPrefix(symbol);
             e.Handled = true;
         }
     }
@@ -343,6 +407,39 @@ public partial class MainWindow : Window
             m_focusedColumn.ScrollIntoView(m_focusedColumn.SelectedItem);
     }
 
+    private void SelectByTypedPrefix(string character)
+    {
+        if (m_focusedColumn == null)
+            return;
+        var now = DateTime.UtcNow;
+        m_typeSearch = now - m_lastTypeSearch > TimeSpan.FromMilliseconds(700)
+            ? character
+            : m_typeSearch + character;
+        m_lastTypeSearch = now;
+        var item = m_focusedColumn.ItemsView
+            .Cast<BrowserItem>()
+            .FirstOrDefault(candidate => candidate.Name.StartsWith(m_typeSearch, StringComparison.CurrentCultureIgnoreCase));
+        if (item == null)
+            return;
+        m_focusedColumn.SelectedItem = item;
+        m_focusedColumn.ScrollIntoView(item);
+    }
+
+    private void RestoreColumnSelection(ListBox listBox, FolderColumnViewModel column)
+    {
+        m_suppressSelectionChanged = true;
+        try
+        {
+            listBox.SelectedItems.Clear();
+            foreach (var item in column.Items.Where(item => column.IsSelectedPath(item.FullPath)))
+                listBox.SelectedItems.Add(item);
+        }
+        finally
+        {
+            m_suppressSelectionChanged = false;
+        }
+    }
+
     private async void OnGoToKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
@@ -367,6 +464,20 @@ public partial class MainWindow : Window
         else if (e.Key == Key.Escape)
         {
             ViewModel.IsRenameVisible = false;
+            e.Handled = true;
+        }
+    }
+
+    private async void OnNewFolderKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            await ViewModel.CommitCreateFolderAsync();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            ViewModel.IsNewFolderVisible = false;
             e.Handled = true;
         }
     }
@@ -422,15 +533,52 @@ public partial class MainWindow : Window
             .FirstOrDefault(item => string.Equals(item.Header?.ToString(), "Paste", StringComparison.Ordinal));
         if (pasteItem != null)
             pasteItem.IsEnabled = m_externalClipboardPaths.Length > 0;
+        var pasteButton = contextMenu.Items
+            .OfType<MenuItem>()
+            .Select(item => item.Header)
+            .OfType<Panel>()
+            .SelectMany(panel => panel.Children)
+            .OfType<Button>()
+            .FirstOrDefault(button => string.Equals(button.Tag?.ToString(), "PasteAction", StringComparison.Ordinal));
+        if (pasteButton != null)
+            pasteButton.IsEnabled = m_externalClipboardPaths.Length > 0;
     }
 
-    private async Task PasteSelectionAsync()
+    private async Task PasteSelectionAsync(DirectoryInfo destination = null)
     {
         await RefreshClipboardPathsAsync();
         if (ViewModel.CanPaste && ViewModel.ClipboardMatches(m_externalClipboardPaths))
-            await ViewModel.PasteAsync();
+            await (destination == null ? ViewModel.PasteAsync() : ViewModel.PasteAsync(destination));
         else
-            await ViewModel.ImportClipboardPathsAsync(m_externalClipboardPaths);
+            await ViewModel.ImportClipboardPathsAsync(m_externalClipboardPaths, destination);
+    }
+
+    private void OnFavoritesDragOver(object sender, DragEventArgs e)
+    {
+        e.DragEffects = e.DataTransfer.Contains(DataFormat.File) ? DragDropEffects.Link : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void OnFavoritesDrop(object sender, DragEventArgs e)
+    {
+        var paths = e.DataTransfer.TryGetFiles()?
+            .Select(item => item.TryGetLocalPath())
+            .Where(Directory.Exists)
+            .ToArray() ?? [];
+        foreach (var path in paths)
+            ViewModel.AddFavorite(path);
+        e.Handled = true;
+    }
+
+    private void OnRemoveFavoriteClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem)
+            return;
+        var entry = menuItem.DataContext as SidebarEntryViewModel;
+        if (entry == null && menuItem.Parent is ContextMenu { PlacementTarget: Button { Tag: SidebarEntryViewModel targetEntry } })
+            entry = targetEntry;
+        if (entry != null)
+            ViewModel.RemoveFavorite(entry);
     }
 
     private async Task RefreshClipboardPathsAsync()
@@ -450,5 +598,11 @@ public partial class MainWindow : Window
         }
         if (ViewModel.CanPaste && !ViewModel.ClipboardMatches(m_externalClipboardPaths))
             ViewModel.ClearClipboard();
+    }
+
+    private void CloseContextMenu()
+    {
+        m_openContextMenu?.Close();
+        m_openContextMenu = null;
     }
 }

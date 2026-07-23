@@ -22,15 +22,34 @@
       <MenuItem Header="Browse here..." Click="OnOpenInNewWindowClicked" IsVisible="{Binding IsDirectory}" />
       <MenuItem Header="Open terminal here" Click="OnTerminalClicked" />
       <Separator />
-      <MenuItem Header="Cut" Click="OnCutClicked" />
-      <MenuItem Header="Copy" Click="OnCopyClicked" />
-      <MenuItem Header="Paste" Click="OnPasteClicked" IsVisible="{Binding IsDirectory}" />
+      <MenuItem StaysOpenOnClick="True" Padding="4">
+        <MenuItem.Header>
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <Button Classes="chrome" Padding="8,5" ToolTip.Tip="Cut" Click="OnCutClicked">
+              <icons:MaterialIcon Kind="ContentCut" Width="18" Height="18" />
+            </Button>
+            <Button Classes="chrome" Padding="8,5" ToolTip.Tip="Copy" Click="OnCopyClicked">
+              <icons:MaterialIcon Kind="ContentCopy" Width="18" Height="18" />
+            </Button>
+            <Button Tag="PasteAction" Classes="chrome" Padding="8,5" ToolTip.Tip="Paste" Click="OnPasteClicked" IsVisible="{Binding IsDirectory}">
+              <icons:MaterialIcon Kind="ContentPaste" Width="18" Height="18" />
+            </Button>
+          </StackPanel>
+        </MenuItem.Header>
+      </MenuItem>
       <MenuItem Header="Rename" InputGesture="F2" Click="OnRenameClicked" />
+      <MenuItem Header="New folder..." Click="OnNewFolderClicked" IsVisible="{Binding IsDirectory}" />
       <Separator />
       <MenuItem Header="Copy full path(s)" Click="OnCopyPathsClicked" />
       <Separator />
       <MenuItem Header="Compress" Click="OnCreateZipClicked" />
       <MenuItem Header="Delete" Click="OnDeleteClicked" />
+    </ContextMenu>
+    <ContextMenu x:Key="ColumnContextMenu">
+      <MenuItem Header="New folder..." Click="OnNewFolderClicked" />
+      <MenuItem Header="Paste" Click="OnPasteClicked" />
+      <Separator />
+      <MenuItem Header="Open terminal here" Click="OnColumnTerminalClicked" />
     </ContextMenu>
   </Window.Resources>
 
@@ -39,11 +58,23 @@
       <Border Grid.Column="0" Background="#1B1E23" Padding="8">
         <ScrollViewer>
           <StackPanel Spacing="4">
-            <TextBlock Text="FAVORITES" Classes="muted" FontSize="11" FontWeight="SemiBold" Margin="8,8,8,4" />
-            <ItemsControl ItemsSource="{Binding Favorites}">
+            <Grid ColumnDefinitions="18,*" ColumnSpacing="5" Margin="8,8,8,4">
+              <icons:MaterialIcon Kind="Star" Width="14" Height="14" Foreground="#9CA5B2" />
+              <TextBlock Grid.Column="1" Text="FAVORITES" Classes="muted" FontSize="11" FontWeight="SemiBold" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding Favorites}"
+                          HorizontalAlignment="Stretch"
+                          DragDrop.AllowDrop="True"
+                          DragDrop.DragOver="OnFavoritesDragOver"
+                          DragDrop.Drop="OnFavoritesDrop">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:SidebarEntryViewModel">
-                  <Button Tag="{Binding}" Classes="chrome" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked">
+                  <Button Tag="{Binding}" Classes="chrome" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked">
+                    <Button.ContextMenu>
+                      <ContextMenu>
+                        <MenuItem Header="Remove favorite" Click="OnRemoveFavoriteClicked" />
+                      </ContextMenu>
+                    </Button.ContextMenu>
                     <Grid ColumnDefinitions="24,*" ColumnSpacing="7">
                       <icons:MaterialIcon Grid.Column="0" Kind="Folder" Width="18" Height="18" Foreground="#8DBCEB" />
                       <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
@@ -52,11 +83,14 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Text="DRIVES" Classes="muted" FontSize="11" FontWeight="SemiBold" Margin="8,18,8,4" />
+            <Grid ColumnDefinitions="18,*" ColumnSpacing="5" Margin="8,18,8,4">
+              <icons:MaterialIcon Kind="Harddisk" Width="14" Height="14" Foreground="#9CA5B2" />
+              <TextBlock Grid.Column="1" Text="DRIVES" Classes="muted" FontSize="11" FontWeight="SemiBold" />
+            </Grid>
             <ItemsControl ItemsSource="{Binding Drives}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:SidebarEntryViewModel">
-                  <Button Tag="{Binding}" Classes="chrome" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked">
+                  <Button Tag="{Binding}" Classes="chrome" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked">
                     <Grid ColumnDefinitions="24,*" ColumnSpacing="7">
                       <icons:MaterialIcon Grid.Column="0" Kind="Harddisk" Width="18" Height="18" Foreground="#AAB4C2" />
                       <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
@@ -106,7 +140,6 @@
                         <DataTemplate x:DataType="models:BrowserItem">
                           <Grid ColumnDefinitions="22,*,Auto"
                                 ColumnSpacing="6"
-                                ToolTip.Tip="{Binding FullPath}"
                                 Tag="{Binding}"
                                 Background="Transparent"
                                 DragDrop.AllowDrop="True"
@@ -114,7 +147,10 @@
                                 DragDrop.DragLeave="OnItemDragLeave"
                                 DragDrop.Drop="OnItemDrop">
                             <icons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="18" Height="18" Foreground="{Binding IconBrush}" />
-                            <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                            <Grid Grid.Column="1" ColumnDefinitions="*,Auto">
+                              <TextBlock Text="{Binding NamePrefix}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                              <TextBlock Grid.Column="1" Text="{Binding NameSuffix}" VerticalAlignment="Center" />
+                            </Grid>
                             <TextBlock Grid.Column="2" Text="›" FontSize="18" Classes="muted" IsVisible="{Binding IsDirectory}" />
                           </Grid>
                         </DataTemplate>
@@ -132,18 +168,20 @@
       <Border Grid.Column="3" Background="#3B4049" />
 
       <Border Grid.Column="4" Background="#1B1E23" Padding="14">
-        <Grid RowDefinitions="Auto,Auto,Auto,*">
-          <Grid Grid.Row="0" ColumnDefinitions="40,*,Auto" ColumnSpacing="10" IsVisible="{Binding HasSelection}">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <Grid Grid.Row="0" ColumnDefinitions="40,*" ColumnSpacing="10" IsVisible="{Binding HasSelection}">
             <icons:MaterialIcon Grid.Column="0" Kind="{Binding PreviewIcon}" Width="34" Height="34" Foreground="{Binding PreviewIconBrush}" />
-            <TextBlock Grid.Column="1" Text="{Binding PreviewSummary}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2" VerticalAlignment="Center" />
-            <Button Grid.Column="2" Classes="chrome expandPreview" Padding="5" ToolTip.Tip="Open larger preview..." Click="OnExpandPreviewClicked" IsVisible="{Binding CanExpandPreview}">
-              <icons:MaterialIcon Kind="ArrowExpandAll" Width="18" Height="18" Foreground="#DCE3EC" />
-            </Button>
+            <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding PreviewSummary}">
+              <TextBlock Text="{Binding PreviewNamePrefix}" FontSize="17" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding PreviewNameSuffix}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
           </Grid>
-          <TextBlock Grid.Row="1" Text="{Binding PreviewPath}" Classes="muted" FontSize="11" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2" Margin="0,10,0,0" />
-          <TextBlock Grid.Row="2" Text="{Binding PreviewDetails}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="0,5,0,10" />
-          <Border Grid.Row="3" Background="#121417" BorderBrush="#343941" BorderThickness="1" CornerRadius="5" Padding="10">
+          <TextBlock Grid.Row="1" Text="{Binding PreviewDetails}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,10" />
+          <Border Grid.Row="2" Background="#121417" BorderBrush="#343941" BorderThickness="1" CornerRadius="5" Padding="10">
             <Grid>
+              <Button HorizontalAlignment="Right" VerticalAlignment="Top" ZIndex="2" Classes="chrome expandPreview" Padding="5" ToolTip.Tip="Open larger preview..." Click="OnExpandPreviewClicked" IsVisible="{Binding CanExpandPreview}">
+                <icons:MaterialIcon Kind="ArrowExpandAll" Width="18" Height="18" Foreground="#DCE3EC" />
+              </Button>
               <TextBlock Text="Select a file or folder" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasSelection}" />
               <Image Source="{Binding PreviewImage}" Stretch="Uniform" IsVisible="{Binding IsImagePreview}" />
               <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsTextPreview}">
@@ -167,7 +205,8 @@
               <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFolderPreview}">
                 <icons:MaterialIcon Kind="Folder" Width="56" Height="56" Foreground="#E7BD68" HorizontalAlignment="Center" />
                 <Button Content="Calculate size" Click="OnCalculateSizeClicked" IsVisible="{Binding CanCalculateFolderSize}" />
-                <TextBlock Text="{Binding FolderSize}" TextWrapping="Wrap" TextAlignment="Center" />
+                <TextBlock Text="{Binding FolderSize}" FontSize="15" TextWrapping="Wrap" TextAlignment="Center" />
+                <TextBlock Text="{Binding FolderSizeExact}" Classes="muted" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" />
               </StackPanel>
               <TextBlock Text="No preview available" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsNoPreview}" />
             </Grid>
@@ -214,7 +253,26 @@
           </Grid>
           <CheckBox Content="Show hidden and system items" IsChecked="{Binding ShowHiddenItems}" />
           <CheckBox Content="Show dot-prefixed folders (such as .git)" IsChecked="{Binding ShowDotFolders}" />
+          <StackPanel IsVisible="{Binding IsWindows}" Spacing="5">
+            <TextBlock Text="Default terminal" Classes="muted" FontSize="11" />
+            <ComboBox ItemsSource="{Binding WindowsTerminals}" SelectedItem="{Binding TerminalCommand}" />
+          </StackPanel>
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="New window shortcut" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding GlobalShortcutText}" FontSize="11" VerticalAlignment="Center" />
+          </Grid>
+          <Button Content="Reset favorites" HorizontalAlignment="Left" Click="OnResetFavoritesClicked" />
           <TextBlock Text="Changes are applied immediately and saved automatically." Classes="muted" FontSize="11" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <Border Grid.RowSpan="2" Background="#99000000" IsVisible="{Binding IsNewFolderVisible}">
+      <Border Width="480" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="18" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,110,0,0">
+        <StackPanel Spacing="10">
+          <TextBlock Text="New folder" FontSize="17" FontWeight="SemiBold" />
+          <TextBox x:Name="NewFolderTextBox" Text="{Binding NewFolderName}" KeyDown="OnNewFolderKeyDown" />
+          <TextBlock Text="Enter to create · Escape to cancel" Classes="muted" FontSize="11" />
         </StackPanel>
       </Border>
     </Border>

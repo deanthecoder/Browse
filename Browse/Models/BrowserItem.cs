@@ -25,6 +25,7 @@ public sealed class BrowserItem
     {
         Info = info;
         Name = info.Name.Length == 0 ? info.FullName : info.Name;
+        (NamePrefix, NameSuffix) = SplitName(Name);
         FullPath = info.FullName;
         IsDirectory = info is DirectoryInfo;
         IsDotFolder = IsDirectory && Name.StartsWith(".", StringComparison.Ordinal) && Name.Length > 1;
@@ -45,6 +46,8 @@ public sealed class BrowserItem
 
     public FileSystemInfo Info { get; }
     public string Name { get; }
+    public string NamePrefix { get; }
+    public string NameSuffix { get; }
     public string FullPath { get; }
     public bool IsDirectory { get; }
     public bool IsDotFolder { get; }
@@ -54,6 +57,14 @@ public sealed class BrowserItem
     public long? Size { get; }
     public MaterialIconKind Icon { get; }
     public IBrush IconBrush { get; }
+
+    public static (string Prefix, string Suffix) SplitName(string name)
+    {
+        if (string.IsNullOrEmpty(name) || name.Length <= 30)
+            return (name, null);
+        const int suffixLength = 14;
+        return (name[..(name.Length - suffixLength)], name[^suffixLength..]);
+    }
 
     private (MaterialIconKind Icon, IBrush Brush) GetIcon()
     {

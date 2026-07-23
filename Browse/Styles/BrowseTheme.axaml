@@ -32,6 +32,9 @@
   <Style Selector="ListBox.browserList ListBoxItem:selected /template/ ContentPresenter">
     <Setter Property="Background" Value="#245F9E" />
   </Style>
+  <Style Selector="ListBox.browserList:not(:focus-within) ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="#414750" />
+  </Style>
   <Style Selector="Grid.folderDropTarget">
     <Setter Property="Background" Value="#3A6388" />
   </Style>

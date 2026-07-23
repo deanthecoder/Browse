@@ -10,6 +10,7 @@
 
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Browse.Services;
 using Browse.ViewModels;
 
@@ -30,6 +31,9 @@ public partial class PreviewWindow : Window
     }
 
     public PreviewWindow(MainWindowViewModel viewModel) : this() => DataContext = viewModel;
+
+    private void OnOpenClicked(object sender, RoutedEventArgs e) =>
+        (DataContext as MainWindowViewModel)?.OpenSelected();
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {

@@ -127,7 +127,13 @@ public sealed class FileOperationService
 
     public void OpenTerminal(DirectoryInfo directory, string configuredCommand = null)
     {
-        if (!string.IsNullOrWhiteSpace(configuredCommand))
+        if (OperatingSystem.IsWindows() && configuredCommand is "PowerShell" or "Command Prompt")
+        {
+            var executable = configuredCommand == "PowerShell" ? "powershell.exe" : "cmd.exe";
+            Process.Start(new ProcessStartInfo(executable) { WorkingDirectory = directory.FullName, UseShellExecute = true });
+            return;
+        }
+        if (!string.IsNullOrWhiteSpace(configuredCommand) && configuredCommand != "Windows Terminal")
         {
             Process.Start(new ProcessStartInfo(configuredCommand) { WorkingDirectory = directory.FullName, UseShellExecute = true });
             return;

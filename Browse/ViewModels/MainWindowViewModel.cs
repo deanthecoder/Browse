@@ -10,6 +10,7 @@
 
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media;
@@ -50,6 +51,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private string m_currentPath;
     private string m_statusText = "Ready";
     private string m_previewSummary = "No selection";
+    private string m_previewNamePrefix = "No selection";
+    private string m_previewNameSuffix;
     private string m_previewContent;
     private string m_previewImagePath;
     private Bitmap m_previewImage;
@@ -62,6 +65,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private string m_folderSize;
     private string m_renameText;
     private bool m_isRenameVisible;
+    private bool m_isNewFolderVisible;
+    private string m_newFolderName;
+    private DirectoryInfo m_newFolderDestination;
+    private string m_folderSizeExact;
 
     public MainWindowViewModel(
         DirectoryContentService directoryService,
@@ -141,7 +148,24 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public string PreviewSummary
     {
         get => m_previewSummary;
-        private set => SetField(ref m_previewSummary, value);
+        private set
+        {
+            if (!SetField(ref m_previewSummary, value))
+                return;
+            (PreviewNamePrefix, PreviewNameSuffix) = BrowserItem.SplitName(value);
+        }
+    }
+
+    public string PreviewNamePrefix
+    {
+        get => m_previewNamePrefix;
+        private set => SetField(ref m_previewNamePrefix, value);
+    }
+
+    public string PreviewNameSuffix
+    {
+        get => m_previewNameSuffix;
+        private set => SetField(ref m_previewNameSuffix, value);
     }
 
     public string PreviewContent
@@ -240,6 +264,28 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public bool CanCalculateFolderSize => string.IsNullOrWhiteSpace(FolderSize);
     public bool CanPaste => m_clipboardItems.Count > 0;
+    public bool IsWindows => OperatingSystem.IsWindows();
+    public string GlobalShortcutText => OperatingSystem.IsWindows() ? "Ctrl+Alt+B" : "Available on Windows";
+    public IReadOnlyList<string> WindowsTerminals { get; } = ["Windows Terminal", "PowerShell", "Command Prompt"];
+
+    public string TerminalCommand
+    {
+        get => string.IsNullOrWhiteSpace(Settings.TerminalCommand) ? "Windows Terminal" : Settings.TerminalCommand;
+        set
+        {
+            if (Settings.TerminalCommand == value)
+                return;
+            Settings.TerminalCommand = value;
+            OnPropertyChanged();
+            m_settingsService.Save(Settings);
+        }
+    }
+
+    public string FolderSizeExact
+    {
+        get => m_folderSizeExact;
+        private set => SetField(ref m_folderSizeExact, value);
+    }
 
     public bool ClipboardMatches(IEnumerable<string> paths)
     {
@@ -259,6 +305,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         get => m_isRenameVisible;
         set => SetField(ref m_isRenameVisible, value);
+    }
+
+    public bool IsNewFolderVisible
+    {
+        get => m_isNewFolderVisible;
+        set => SetField(ref m_isNewFolderVisible, value);
+    }
+
+    public string NewFolderName
+    {
+        get => m_newFolderName;
+        set => SetField(ref m_newFolderName, value);
     }
 
     public string RenameText
@@ -302,6 +360,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         DisposeWatchers();
         Columns.Clear();
         m_selectedItems.Clear();
+        ClearPreview();
         var directory = new DirectoryInfo(path);
         CurrentPath = directory.FullName;
         GoToPath = CurrentPath;
@@ -320,6 +379,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_selectedItems.Clear();
         m_selectedItems.AddRange(selection);
         FolderSize = null;
+        FolderSizeExact = null;
         await UpdatePreviewAsync();
 
         if (selection.Count == 1 && selection[0].IsDirectory)
@@ -332,6 +392,17 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             CurrentPath = column.Directory.FullName;
         }
         StatusText = selection.Count == 0 ? $"{column.Items.Count:N0} items" : $"{selection.Count:N0} selected";
+    }
+
+    public void SetContextSelection(FolderColumnViewModel column, IReadOnlyList<BrowserItem> selection)
+    {
+        column.SetSelection(selection);
+        m_selectedItems.Clear();
+        m_selectedItems.AddRange(selection);
+        FolderSize = null;
+        FolderSizeExact = null;
+        _ = UpdatePreviewAsync();
+        StatusText = $"{selection.Count:N0} selected";
     }
 
     public void ShowGoTo()
@@ -355,11 +426,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         StatusText = $"{m_clipboardItems.Count:N0} item(s) ready to {(cut ? "move" : "copy")}.";
     }
 
-    public async Task PasteAsync()
+    public Task PasteAsync() => PasteAsync(new DirectoryInfo(CurrentPath));
+
+    public async Task PasteAsync(DirectoryInfo destination)
     {
-        if (m_clipboardItems.Count == 0 || string.IsNullOrWhiteSpace(CurrentPath))
+        if (m_clipboardItems.Count == 0 || destination == null)
             return;
-        var destination = new DirectoryInfo(CurrentPath);
         StatusText = m_clipboardIsCut ? "Moving…" : "Copying…";
         try
         {
@@ -403,10 +475,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public Task ImportClipboardPathsAsync(IEnumerable<string> paths) =>
-        string.IsNullOrWhiteSpace(CurrentPath)
+    public Task ImportClipboardPathsAsync(IEnumerable<string> paths, DirectoryInfo destination = null) =>
+        destination == null && string.IsNullOrWhiteSpace(CurrentPath)
             ? Task.CompletedTask
-            : ImportDroppedPathsAsync(paths, new DirectoryInfo(CurrentPath), false);
+            : ImportDroppedPathsAsync(paths, destination ?? new DirectoryInfo(CurrentPath), false);
 
     public IReadOnlyList<BrowserItem> SelectedItems => m_selectedItems;
 
@@ -422,7 +494,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         if (m_selectedItems[0].IsDirectory)
             _ = NavigateToAsync(m_selectedItems[0].FullPath);
         else
-            m_fileOperationService.Open(m_selectedItems[0]);
+        {
+            try
+            {
+                m_fileOperationService.Open(m_selectedItems[0]);
+            }
+            catch (Exception ex)
+            {
+                StatusText = ex is System.ComponentModel.Win32Exception { NativeErrorCode: 1223 }
+                    ? "Open canceled."
+                    : $"Could not open {m_selectedItems[0].Name}: {ex.Message}";
+            }
+        }
     }
 
     public void OpenTerminal()
@@ -431,8 +514,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             ? m_selectedItems[0].IsDirectory ? m_selectedItems[0].FullPath : Path.GetDirectoryName(m_selectedItems[0].FullPath)
             : CurrentPath;
         if (!string.IsNullOrWhiteSpace(path))
-            m_fileOperationService.OpenTerminal(new DirectoryInfo(path), Settings.TerminalCommand);
+            OpenTerminal(new DirectoryInfo(path));
     }
+
+    public void OpenTerminal(DirectoryInfo directory) =>
+        m_fileOperationService.OpenTerminal(directory, Settings.TerminalCommand);
 
     public void BeginRename()
     {
@@ -469,7 +555,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         try
         {
             var bytes = await m_fileOperationService.CalculateFolderSizeAsync(new DirectoryInfo(m_selectedItems[0].FullPath));
-            FolderSize = $"{bytes.ToSize()} ({bytes:N0} bytes)";
+            FolderSize = bytes.ToSize();
+            FolderSizeExact = $"{bytes:N0} bytes";
         }
         catch (Exception ex)
         {
@@ -530,6 +617,55 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         await ReloadCurrentAsync();
     }
 
+    public void BeginCreateFolder(DirectoryInfo destination)
+    {
+        m_newFolderDestination = destination ?? new DirectoryInfo(CurrentPath);
+        NewFolderName = "New folder";
+        IsNewFolderVisible = true;
+    }
+
+    public async Task CommitCreateFolderAsync()
+    {
+        IsNewFolderVisible = false;
+        if (m_newFolderDestination == null || string.IsNullOrWhiteSpace(NewFolderName))
+            return;
+        try
+        {
+            var requestedPath = Path.Combine(m_newFolderDestination.FullName, NewFolderName.Trim());
+            var path = FileOperationService.GetAvailablePath(requestedPath);
+            await Task.Run(() => Directory.CreateDirectory(path));
+            m_directoryService.Invalidate(m_newFolderDestination);
+            await ReloadCurrentAsync();
+            StatusText = $"Created {Path.GetFileName(path)}.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = ex.Message;
+        }
+    }
+
+    public void AddFavorite(string path)
+    {
+        if (!Directory.Exists(path) || Favorites.Any(entry => string.Equals(entry.Path, path, StringComparison.OrdinalIgnoreCase)))
+            return;
+        Favorites.Add(CreateFavorite(path));
+        SaveFavoritePaths();
+    }
+
+    public void RemoveFavorite(SidebarEntryViewModel entry)
+    {
+        if (entry == null || !Favorites.Remove(entry))
+            return;
+        SaveFavoritePaths();
+    }
+
+    public void ResetFavorites()
+    {
+        Settings.FavoritePaths = GetDefaultFavoritePaths();
+        PopulateFavorites();
+        m_settingsService.Save(Settings);
+    }
+
     private async Task ReloadCurrentAsync()
     {
         var columns = Columns.ToArray();
@@ -548,6 +684,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private async Task LoadColumnAsync(FolderColumnViewModel column, CancellationToken cancellationToken)
     {
         column.IsLoading = true;
+        column.IsRefreshing = true;
         column.Error = null;
         try
         {
@@ -565,6 +702,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         finally
         {
             column.IsLoading = false;
+            column.IsRefreshing = false;
         }
         StatusText = $"{column.Items.Count:N0} items";
     }
@@ -577,16 +715,16 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         try
         {
             var result = await m_previewService.CreateAsync(m_selectedItems, m_previewCancellation.Token);
-            Bitmap image = null;
+            DecodedImage image = null;
             if (!string.IsNullOrWhiteSpace(result.ImagePath))
                 image = await Task.Run(() => DecodePreviewImage(result.ImagePath), m_previewCancellation.Token);
             PreviewKind = result.Kind;
             PreviewSummary = result.Name;
             PreviewPath = result.Path;
-            PreviewDetails = result.Details;
+            PreviewDetails = image == null ? result.Details : $"{result.Details} · {image.Width:N0} × {image.Height:N0} · {image.BitsPerPixel}-bit";
             PreviewContent = result.Content;
             PreviewImagePath = result.ImagePath;
-            PreviewImage = image;
+            PreviewImage = image?.Bitmap;
             HasSelection = m_selectedItems.Count > 0;
             if (m_selectedItems.Count == 1)
             {
@@ -608,39 +746,69 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private static Bitmap DecodePreviewImage(string path)
+    private static DecodedImage DecodePreviewImage(string path)
     {
         var extension = Path.GetExtension(path);
         if (!extension.Equals(".tif", StringComparison.OrdinalIgnoreCase) &&
             !extension.Equals(".tiff", StringComparison.OrdinalIgnoreCase))
         {
             using var fileStream = File.OpenRead(path);
-            return Bitmap.DecodeToHeight(fileStream, 700, BitmapInterpolationMode.HighQuality);
+            var decodedBitmap = Bitmap.DecodeToHeight(fileStream, 700, BitmapInterpolationMode.MediumQuality);
+            var metadata = ReadImageMetadata(path);
+            return new DecodedImage(
+                decodedBitmap,
+                metadata?.Width ?? decodedBitmap.PixelSize.Width,
+                metadata?.Height ?? decodedBitmap.PixelSize.Height,
+                metadata?.BitsPerPixel ?? 32);
         }
 
         using var tiff = Tiff.Open(path, "r") ?? throw new IOException("The TIFF file could not be opened.");
         var width = tiff.GetField(TiffTag.IMAGEWIDTH)[0].ToInt();
         var height = tiff.GetField(TiffTag.IMAGELENGTH)[0].ToInt();
-        var raster = new int[checked(width * height)];
-        if (!tiff.ReadRGBAImageOriented(width, height, raster, Orientation.TOPLEFT))
-            throw new IOException("The TIFF image could not be decoded.");
-
+        var bitsPerSample = tiff.GetFieldDefaulted(TiffTag.BITSPERSAMPLE)[0].ToInt();
+        var samplesPerPixel = tiff.GetFieldDefaulted(TiffTag.SAMPLESPERPIXEL)[0].ToInt();
+        var photometric = (Photometric)tiff.GetFieldDefaulted(TiffTag.PHOTOMETRIC)[0].ToInt();
+        var planarConfig = (PlanarConfig)tiff.GetFieldDefaulted(TiffTag.PLANARCONFIG)[0].ToInt();
         var scale = Math.Min(1.0, 700.0 / Math.Max(width, height));
         var previewWidth = Math.Max(1, (int)Math.Round(width * scale));
         var previewHeight = Math.Max(1, (int)Math.Round(height * scale));
         var pixels = new byte[previewWidth * previewHeight * 4];
-        for (var y = 0; y < previewHeight; y++)
+        if (bitsPerSample == 8 && planarConfig == PlanarConfig.CONTIG &&
+            (photometric == Photometric.RGB || photometric is Photometric.MINISBLACK or Photometric.MINISWHITE))
         {
-            var sourceY = Math.Min(height - 1, (int)(y / scale));
-            for (var x = 0; x < previewWidth; x++)
+            var scanline = new byte[tiff.ScanlineSize()];
+            var targetY = 0;
+            for (var sourceY = 0; sourceY < height && targetY < previewHeight; sourceY++)
             {
-                var sourceX = Math.Min(width - 1, (int)(x / scale));
-                var rgba = raster[sourceY * width + sourceX];
-                var offset = (y * previewWidth + x) * 4;
-                pixels[offset] = (byte)Tiff.GetB(rgba);
-                pixels[offset + 1] = (byte)Tiff.GetG(rgba);
-                pixels[offset + 2] = (byte)Tiff.GetR(rgba);
-                pixels[offset + 3] = (byte)Tiff.GetA(rgba);
+                if (!tiff.ReadScanline(scanline, sourceY))
+                    throw new IOException("The TIFF image could not be decoded.");
+                if (sourceY != Math.Min(height - 1, (int)(targetY / scale)))
+                    continue;
+                CopyTiffScanline(scanline, pixels, targetY, previewWidth, width, scale, samplesPerPixel, photometric);
+                targetY++;
+            }
+        }
+        else
+        {
+            const int maxFallbackPixels = 16 * 1024 * 1024;
+            if ((long)width * height > maxFallbackPixels)
+                throw new IOException("This TIFF format is too large to preview safely.");
+            var raster = new int[checked(width * height)];
+            if (!tiff.ReadRGBAImageOriented(width, height, raster, Orientation.TOPLEFT))
+                throw new IOException("The TIFF image could not be decoded.");
+            for (var y = 0; y < previewHeight; y++)
+            {
+                var sourceY = Math.Min(height - 1, (int)(y / scale));
+                for (var x = 0; x < previewWidth; x++)
+                {
+                    var sourceX = Math.Min(width - 1, (int)(x / scale));
+                    var rgba = raster[sourceY * width + sourceX];
+                    var offset = (y * previewWidth + x) * 4;
+                    pixels[offset] = (byte)Tiff.GetB(rgba);
+                    pixels[offset + 1] = (byte)Tiff.GetG(rgba);
+                    pixels[offset + 2] = (byte)Tiff.GetR(rgba);
+                    pixels[offset + 3] = (byte)Tiff.GetA(rgba);
+                }
             }
         }
 
@@ -658,20 +826,120 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 framebuffer.Address + y * framebuffer.RowBytes,
                 previewWidth * 4);
         }
-        return bitmap;
+        return new DecodedImage(bitmap, width, height, bitsPerSample * samplesPerPixel);
     }
+
+    private static void CopyTiffScanline(
+        byte[] scanline,
+        byte[] pixels,
+        int targetY,
+        int previewWidth,
+        int sourceWidth,
+        double scale,
+        int samplesPerPixel,
+        Photometric photometric)
+    {
+        for (var x = 0; x < previewWidth; x++)
+        {
+            var sourceX = Math.Min(sourceWidth - 1, (int)(x / scale));
+            var sourceOffset = sourceX * samplesPerPixel;
+            var targetOffset = (targetY * previewWidth + x) * 4;
+            if (photometric == Photometric.RGB)
+            {
+                pixels[targetOffset] = scanline[sourceOffset + 2];
+                pixels[targetOffset + 1] = scanline[sourceOffset + 1];
+                pixels[targetOffset + 2] = scanline[sourceOffset];
+                pixels[targetOffset + 3] = samplesPerPixel > 3 ? scanline[sourceOffset + 3] : (byte)255;
+            }
+            else
+            {
+                var intensity = scanline[sourceOffset];
+                if (photometric == Photometric.MINISWHITE)
+                    intensity = (byte)(255 - intensity);
+                pixels[targetOffset] = intensity;
+                pixels[targetOffset + 1] = intensity;
+                pixels[targetOffset + 2] = intensity;
+                pixels[targetOffset + 3] = samplesPerPixel > 1 ? scanline[sourceOffset + 1] : (byte)255;
+            }
+        }
+    }
+
+    private sealed record DecodedImage(Bitmap Bitmap, int Width, int Height, int BitsPerPixel);
+
+    private static ImageMetadata ReadImageMetadata(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            var header = new byte[32];
+            if (stream.Read(header, 0, header.Length) < 30)
+                return null;
+            var extension = Path.GetExtension(path);
+            if (extension.Equals(".png", StringComparison.OrdinalIgnoreCase))
+            {
+                var width = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(16, 4));
+                var height = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(20, 4));
+                var channels = header[25] switch { 0 => 1, 2 => 3, 3 => 1, 4 => 2, 6 => 4, _ => 1 };
+                return new ImageMetadata(width, height, header[24] * channels);
+            }
+            if (extension.Equals(".gif", StringComparison.OrdinalIgnoreCase))
+                return new ImageMetadata(
+                    BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(6, 2)),
+                    BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(8, 2)),
+                    (header[10] & 0x07) + 1);
+            if (extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase))
+                return new ImageMetadata(
+                    Math.Abs(BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(18, 4))),
+                    Math.Abs(BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(22, 4))),
+                    BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(28, 2)));
+            if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+                return ReadJpegMetadata(stream);
+        }
+        catch (Exception)
+        {
+            // Metadata is optional; image decoding can still proceed.
+        }
+        return null;
+    }
+
+    private static ImageMetadata ReadJpegMetadata(Stream stream)
+    {
+        stream.Position = 2;
+        while (stream.Position < stream.Length - 8)
+        {
+            if (stream.ReadByte() != 0xff)
+                continue;
+            int marker;
+            do marker = stream.ReadByte(); while (marker == 0xff);
+            if (marker < 0)
+                break;
+            var lengthBytes = new byte[2];
+            if (stream.Read(lengthBytes, 0, 2) != 2)
+                break;
+            var length = BinaryPrimitives.ReadUInt16BigEndian(lengthBytes);
+            if (length < 2)
+                break;
+            if (marker is 0xc0 or 0xc1 or 0xc2 or 0xc3 or 0xc5 or 0xc6 or 0xc7 or 0xc9 or 0xca or 0xcb or 0xcd or 0xce or 0xcf)
+            {
+                var frame = new byte[6];
+                if (stream.Read(frame, 0, frame.Length) != frame.Length)
+                    break;
+                return new ImageMetadata(
+                    BinaryPrimitives.ReadUInt16BigEndian(frame.AsSpan(3, 2)),
+                    BinaryPrimitives.ReadUInt16BigEndian(frame.AsSpan(1, 2)),
+                    frame[0] * frame[5]);
+            }
+            stream.Seek(length - 2, SeekOrigin.Current);
+        }
+        return null;
+    }
+
+    private sealed record ImageMetadata(int Width, int Height, int BitsPerPixel);
 
     private void PopulateSidebar()
     {
-        AddFavorite("Home", Environment.SpecialFolder.UserProfile);
-        AddFavorite("Desktop", Environment.SpecialFolder.DesktopDirectory);
-        AddFavorite("Documents", Environment.SpecialFolder.MyDocuments);
-        var downloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-        if (Directory.Exists(downloads))
-            Favorites.Add(new SidebarEntryViewModel("Downloads", downloads));
-        var applications = GetApplicationsPath();
-        if (!string.IsNullOrWhiteSpace(applications) && Directory.Exists(applications))
-            Favorites.Add(new SidebarEntryViewModel("Applications", applications));
+        PopulateFavorites();
 
         foreach (var drive in DriveInfo.GetDrives().Where(IsUsefulDrive))
         {
@@ -717,11 +985,60 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private void AddFavorite(string name, Environment.SpecialFolder specialFolder)
+    private void PopulateFavorites()
     {
-        var path = Environment.GetFolderPath(specialFolder);
-        if (!string.IsNullOrWhiteSpace(path) && Directory.Exists(path))
-            Favorites.Add(new SidebarEntryViewModel(name, path));
+        Favorites.Clear();
+        var paths = Settings.FavoritePaths ?? GetDefaultFavoritePaths();
+        foreach (var path in paths.Where(Directory.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
+            Favorites.Add(CreateFavorite(path));
+    }
+
+    private static string[] GetDefaultFavoritePaths()
+    {
+        var paths = new[]
+        {
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
+            GetApplicationsPath()
+        };
+        return paths.Where(path => !string.IsNullOrWhiteSpace(path) && Directory.Exists(path)).ToArray();
+    }
+
+    private static SidebarEntryViewModel CreateFavorite(string path)
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var name = string.Equals(path, home, StringComparison.OrdinalIgnoreCase)
+            ? "Home"
+            : string.Equals(path, Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), StringComparison.OrdinalIgnoreCase)
+                ? "Desktop"
+                : string.Equals(path, Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), StringComparison.OrdinalIgnoreCase)
+                    ? "Documents"
+                    : string.Equals(path, GetApplicationsPath(), StringComparison.OrdinalIgnoreCase)
+                        ? "Applications"
+                        : new DirectoryInfo(path).Name;
+        return new SidebarEntryViewModel(name, path);
+    }
+
+    private void SaveFavoritePaths()
+    {
+        Settings.FavoritePaths = Favorites.Select(entry => entry.Path).ToArray();
+        m_settingsService.Save(Settings);
+    }
+
+    private void ClearPreview()
+    {
+        PreviewKind = PreviewKind.None;
+        PreviewSummary = "No selection";
+        PreviewPath = null;
+        PreviewDetails = null;
+        PreviewContent = null;
+        PreviewImagePath = null;
+        PreviewImage = null;
+        HasSelection = false;
+        FolderSize = null;
+        FolderSizeExact = null;
     }
 
     private void SaveSettingsAndReload()

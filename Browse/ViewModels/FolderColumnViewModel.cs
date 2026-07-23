@@ -24,6 +24,7 @@ public sealed class FolderColumnViewModel : ViewModelBase
 {
     private bool m_isLoading;
     private string m_error;
+    private bool m_isRefreshing;
     private readonly HashSet<string> m_selectedPaths = new(StringComparer.OrdinalIgnoreCase);
 
     public FolderColumnViewModel(DirectoryInfo directory)
@@ -61,6 +62,14 @@ public sealed class FolderColumnViewModel : ViewModelBase
         }
         while (Items.Count > desired.Length)
             Items.RemoveAt(Items.Count - 1);
+    }
+
+    public bool IsSelectedPath(string path) => m_selectedPaths.Contains(path);
+
+    public bool IsRefreshing
+    {
+        get => m_isRefreshing;
+        set => SetField(ref m_isRefreshing, value);
     }
 
     public bool IsLoading
