@@ -243,7 +243,10 @@ public partial class MainWindow : Window
         }
         if (transfer.Items.Count > 0)
         {
-            await DragDrop.DoDragDropAsync(e, transfer, DragDropEffects.Copy | DragDropEffects.Move);
+            await DragDrop.DoDragDropAsync(
+                e,
+                transfer,
+                DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
         }
     }
 
