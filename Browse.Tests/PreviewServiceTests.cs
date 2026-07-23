@@ -9,7 +9,6 @@
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
 using System.IO.Compression;
-using Browse.Converters;
 using Browse.Models;
 using Browse.Services;
 using Browse.Services.Previews;
@@ -62,6 +61,9 @@ public sealed class PreviewServiceTests
     [TestCase("sample.cs")]
     [TestCase("sample.h")]
     [TestCase("sample.cpp")]
+    [TestCase("sample.xml")]
+    [TestCase("sample.json")]
+    [TestCase("sample.ps1")]
     public async Task CheckCommonSourceFilesUseSyntaxPreview(string name)
     {
         using var temp = new TempDirectory();
@@ -69,13 +71,28 @@ public sealed class PreviewServiceTests
         await File.WriteAllTextAsync(path, "class Sample { }");
 
         var result = await new PreviewService().CreateAsync([new BrowserItem(new FileInfo(path))]);
-        var highlighting = new CodeHighlightingConverter().Convert(path, typeof(object), null, null);
 
         Assert.Multiple(() =>
         {
             Assert.That(result, Is.TypeOf<TextPreviewContent>());
             Assert.That(((TextPreviewContent)result).Mode, Is.EqualTo(TextPreviewMode.Code));
-            Assert.That(highlighting, Is.Not.Null);
+            Assert.That(((TextPreviewContent)result).Language, Is.EqualTo(Path.GetExtension(path).TrimStart('.')));
+        });
+    }
+
+    [Test]
+    public async Task CheckMarkdownUsesMarkdownPreviewInsteadOfCodeGrammar()
+    {
+        using var temp = new TempDirectory();
+        var path = Path.Combine(temp.FullName, "readme.md");
+        await File.WriteAllTextAsync(path, "# Heading");
+
+        var result = (TextPreviewContent)await new PreviewService().CreateAsync([new BrowserItem(new FileInfo(path))]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Mode, Is.EqualTo(TextPreviewMode.Markdown));
+            Assert.That(result.Language, Is.Null);
         });
     }
 

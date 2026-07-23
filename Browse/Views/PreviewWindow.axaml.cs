@@ -16,13 +16,11 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
-using AvaloniaEdit;
-using AvaloniaEdit.Document;
-using AvaloniaEdit.Highlighting;
 using Browse.Models;
 using Browse.Services;
 using Browse.ViewModels;
-using Markdown.Avalonia;
+using LiveMarkdown.Avalonia;
+using TextMateSharp.Grammars;
 
 namespace Browse.Views;
 
@@ -108,20 +106,27 @@ public partial class PreviewWindow : Window
         }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Code } code)
         {
-            return new TextEditor
+            return new CodeBlock
             {
-                Document = new TextDocument(code.Text),
-                SyntaxHighlighting = HighlightingManager.Instance.GetDefinitionByExtension(Path.GetExtension(code.Path)),
-                IsReadOnly = true,
-                WordWrap = false,
-                ShowLineNumbers = true,
-                FontFamily = new FontFamily("Consolas"),
-                FontSize = 13,
-                Background = Brush.Parse("#111316")
+                Code = code.Text,
+                Language = code.Language,
+                ColorTheme = ThemeName.AtomOneDark,
+                IsCodeWrapped = false,
+                FontSize = 13
             };
         }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown } markdown)
-            return new MarkdownScrollViewer { Markdown = markdown.Text };
+        {
+            return new ScrollViewer
+            {
+                Content = new MarkdownRenderer
+                {
+                    MarkdownBuilder = new ObservableStringBuilder(markdown.Text),
+                    ImageBasePath = Path.GetDirectoryName(markdown.Path),
+                    CodeBlockColorTheme = ThemeName.AtomOneDark
+                }
+            };
+        }
         if (m_viewModel.Preview is ArchivePreviewContent archive)
         {
             return new ScrollViewer

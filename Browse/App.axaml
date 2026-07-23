@@ -1,18 +1,26 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:icons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
-             xmlns:converters="using:Browse.Converters"
              x:Class="Browse.App"
              RequestedThemeVariant="Dark"
              Name="Browse">
   <Application.Resources>
-    <converters:CodeHighlightingConverter x:Key="CodeHighlighting" />
-    <converters:CodeDocumentConverter x:Key="CodeDocument" />
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://LiveMarkdown.Avalonia/Defaults.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+      <Color x:Key="BorderColor">#4A515C</Color>
+      <Color x:Key="ForegroundColor">#DCE3EC</Color>
+      <Color x:Key="CardBackgroundColor">#24272D</Color>
+      <Color x:Key="SecondaryCardBackgroundColor">#121417</Color>
+      <Color x:Key="CodeInlineColor">#E5C07B</Color>
+      <Color x:Key="QuoteBorderColor">#6C9BC3</Color>
+    </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
     <icons:MaterialIconStyles />
-    <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+    <StyleInclude Source="avares://LiveMarkdown.Avalonia/Styles.axaml" />
     <StyleInclude Source="avares://Browse/Styles/BrowseTheme.axaml" />
   </Application.Styles>
 </Application>

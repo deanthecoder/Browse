@@ -77,10 +77,12 @@ public sealed class TextPreviewContent(
     string path,
     string details,
     string text,
-    TextPreviewMode mode) : PreviewContent(name, path, details)
+    TextPreviewMode mode,
+    string language = null) : PreviewContent(name, path, details)
 {
     public string Text { get; } = text;
     public TextPreviewMode Mode { get; } = mode;
+    public string Language { get; } = language;
     public override bool CanExpand => true;
 }
 

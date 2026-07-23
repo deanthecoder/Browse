@@ -24,12 +24,6 @@ public sealed class TextPreviewProvider : IPreviewProvider
 {
     private const int MaxPreviewBytes = 8 * 1024;
     private const int MaxPreviewLines = 600;
-    private static readonly HashSet<string> CodeExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".bat", ".c", ".cmd", ".cpp", ".cs", ".css", ".h", ".hpp", ".htm", ".html",
-        ".js", ".json", ".jsx", ".ps1", ".py", ".sh", ".ts", ".tsx", ".xml", ".xaml", ".axaml"
-    };
-
     public async ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken)
     {
         if (item.IsDirectory)
@@ -48,15 +42,17 @@ public sealed class TextPreviewProvider : IPreviewProvider
     {
         var file = (FileInfo)item.Info;
         var text = await ReadSampleAsync(file, cancellationToken);
+        var language = TextMateLanguageResolver.Resolve(file.FullName);
         var mode = file.Extension.Equals(".md", StringComparison.OrdinalIgnoreCase)
             ? TextPreviewMode.Markdown
-            : CodeExtensions.Contains(file.Extension) ? TextPreviewMode.Code : TextPreviewMode.Plain;
+            : language == null ? TextPreviewMode.Plain : TextPreviewMode.Code;
         return new TextPreviewContent(
             item.Name,
             item.FullPath,
             $"{item.Size?.ToSize() ?? "Unknown size"} · Modified {item.LastWriteTime:g}",
             text,
-            mode);
+            mode,
+            mode == TextPreviewMode.Code ? language : null);
     }
 
     private static async Task<string> ReadSampleAsync(FileInfo file, CancellationToken cancellationToken)

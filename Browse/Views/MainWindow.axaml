@@ -1,7 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:icons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
-        xmlns:edit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         xmlns:vm="using:Browse.ViewModels"
         xmlns:models="using:Browse.Models"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -192,15 +191,9 @@
               <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsTextPreview}">
                 <TextBlock Text="{Binding PreviewContent}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" />
               </ScrollViewer>
-              <edit:TextEditor Document="{Binding PreviewContent, Converter={StaticResource CodeDocument}}"
-                               SyntaxHighlighting="{Binding PreviewPath, Converter={StaticResource CodeHighlighting}}"
-                               IsReadOnly="True"
-                               WordWrap="False"
-                               ShowLineNumbers="False"
-                               FontFamily="Consolas"
-                               FontSize="11"
-                               Background="Transparent"
-                               IsVisible="{Binding IsCodePreview}" />
+              <ScrollViewer HorizontalScrollBarVisibility="Auto" IsVisible="{Binding IsCodePreview}">
+                <TextBlock Text="{Binding PreviewContent}" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="11" />
+              </ScrollViewer>
               <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsMarkdownPreview}">
                 <TextBlock Text="{Binding PreviewContent}" TextWrapping="Wrap" FontSize="11" />
               </ScrollViewer>
