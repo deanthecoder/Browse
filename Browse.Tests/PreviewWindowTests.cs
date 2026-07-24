@@ -20,6 +20,34 @@ namespace Browse.Tests;
 public sealed class PreviewWindowTests
 {
     [Test]
+    public async Task CheckExpandedTextReadsTheCompleteFile()
+    {
+        var path = Path.GetTempFileName();
+        var text = string.Join('\n', Enumerable.Range(1, 2_000).Select(i => $"Line {i:N0}: expanded preview content"));
+        await File.WriteAllTextAsync(path, text);
+        try
+        {
+            var preview = new TextPreviewContent(
+                Path.GetFileName(path),
+                path,
+                null,
+                text[..8_192] + "\n\n… preview truncated …",
+                TextPreviewMode.Code,
+                "txt",
+                true);
+
+            var expanded = await PreviewWindow.ReadExpandedTextAsync(preview, CancellationToken.None);
+
+            Assert.That(expanded, Is.EqualTo(text));
+            Assert.That(expanded, Does.Not.Contain("preview truncated"));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Test]
     public async Task CheckCodePreviewUsesViewportColorizer()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());

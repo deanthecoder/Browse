@@ -41,7 +41,7 @@ public sealed class TextPreviewProvider : IPreviewProvider
     public async Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken)
     {
         var file = (FileInfo)item.Info;
-        var text = await ReadSampleAsync(file, cancellationToken);
+        var sample = await ReadSampleAsync(file, cancellationToken);
         var language = TextMateLanguageResolver.Resolve(file.FullName);
         var mode = file.Extension.Equals(".md", StringComparison.OrdinalIgnoreCase)
             ? TextPreviewMode.Markdown
@@ -50,12 +50,13 @@ public sealed class TextPreviewProvider : IPreviewProvider
             item.Name,
             item.FullPath,
             $"{item.Size?.ToSize() ?? "Unknown size"} · Modified {item.LastWriteTime:g}",
-            text,
+            sample.Text,
             mode,
-            mode == TextPreviewMode.Code ? language : null);
+            mode == TextPreviewMode.Code ? language : null,
+            sample.IsTruncated);
     }
 
-    private static async Task<string> ReadSampleAsync(FileInfo file, CancellationToken cancellationToken)
+    private static async Task<TextSample> ReadSampleAsync(FileInfo file, CancellationToken cancellationToken)
     {
         await using var stream = file.OpenRead();
         var byteCount = (int)Math.Min(file.Length, MaxPreviewBytes);
@@ -66,6 +67,8 @@ public sealed class TextPreviewProvider : IPreviewProvider
         var wasTruncated = file.Length > MaxPreviewBytes || lines.Length > MaxPreviewLines;
         if (lines.Length > MaxPreviewLines)
             content = string.Join('\n', lines.Take(MaxPreviewLines));
-        return wasTruncated ? content + "\n\n… preview truncated …" : content;
+        return new TextSample(wasTruncated ? content + "\n\n… preview truncated …" : content, wasTruncated);
     }
+
+    private sealed record TextSample(string Text, bool IsTruncated);
 }

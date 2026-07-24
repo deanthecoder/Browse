@@ -35,6 +35,7 @@ namespace Browse.Views;
 public partial class PreviewWindow : Window
 {
     private MainWindowViewModel m_viewModel;
+    private CancellationTokenSource m_previewCancellation = new();
     private bool m_updateQueued;
 
     public PreviewWindow()
@@ -76,6 +77,9 @@ public partial class PreviewWindow : Window
 
     private void QueuePreviewUpdate()
     {
+        m_previewCancellation.Cancel();
+        m_previewCancellation.Dispose();
+        m_previewCancellation = new CancellationTokenSource();
         if (m_updateQueued)
             return;
         m_updateQueued = true;
@@ -83,11 +87,30 @@ public partial class PreviewWindow : Window
         {
             m_updateQueued = false;
             if (IsVisible)
-                PreviewHost.Content = CreatePreview();
+                _ = UpdatePreviewAsync(m_previewCancellation.Token);
         }, DispatcherPriority.Background);
     }
 
-    private Control CreatePreview()
+    private async Task UpdatePreviewAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var preview = await CreatePreviewAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (IsVisible)
+                PreviewHost.Content = preview;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            if (IsVisible)
+                PreviewHost.Content = CreateMessage($"Preview unavailable · {ex.Message}");
+        }
+    }
+
+    private async Task<Control> CreatePreviewAsync(CancellationToken cancellationToken)
     {
         if (m_viewModel == null)
             return CreateMessage("No larger preview is available for this item.");
@@ -95,9 +118,10 @@ public partial class PreviewWindow : Window
             return new Image { Source = image.Image, Stretch = Stretch.Uniform };
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Plain } plainText)
         {
+            var text = await ReadExpandedTextAsync(plainText, cancellationToken);
             return new TextBox
             {
-                Text = plainText.Text,
+                Text = text,
                 IsReadOnly = true,
                 AcceptsReturn = true,
                 TextWrapping = TextWrapping.Wrap,
@@ -107,14 +131,20 @@ public partial class PreviewWindow : Window
             };
         }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Code } code)
-            return CreateCodePreview(code);
+        {
+            var text = await ReadExpandedTextAsync(code, cancellationToken);
+            var colorizer = await Task.Run(() => TextMateCodeColorizer.Create(code.Path, text), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            return CreateCodePreview(code, text, colorizer);
+        }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown } markdown)
         {
+            var text = await ReadExpandedTextAsync(markdown, cancellationToken);
             return new ScrollViewer
             {
                 Content = new MarkdownRenderer
                 {
-                    MarkdownBuilder = new ObservableStringBuilder(markdown.Text),
+                    MarkdownBuilder = new ObservableStringBuilder(text),
                     ImageBasePath = Path.GetDirectoryName(markdown.Path),
                     CodeBlockColorTheme = ThemeName.AtomOneDark
                 }
@@ -137,11 +167,14 @@ public partial class PreviewWindow : Window
         return CreateMessage("No larger preview is available for this item.");
     }
 
-    internal static TextEditor CreateCodePreview(TextPreviewContent code)
+    internal static TextEditor CreateCodePreview(TextPreviewContent code) =>
+        CreateCodePreview(code, code.Text, TextMateCodeColorizer.Create(code.Path, code.Text));
+
+    private static TextEditor CreateCodePreview(TextPreviewContent code, string text, TextMateCodeColorizer colorizer)
     {
         var editor = new TextEditor
         {
-            Document = new TextDocument(code.Text),
+            Document = new TextDocument(text),
             IsReadOnly = true,
             WordWrap = false,
             ShowLineNumbers = true,
@@ -150,11 +183,15 @@ public partial class PreviewWindow : Window
             Background = Brush.Parse("#1E1E1E"),
             Foreground = Brush.Parse("#D4D4D4")
         };
-        var colorizer = TextMateCodeColorizer.Create(code.Path, code.Text);
         if (colorizer != null)
             editor.TextArea.TextView.LineTransformers.Add(colorizer);
         return editor;
     }
+
+    internal static async Task<string> ReadExpandedTextAsync(TextPreviewContent preview, CancellationToken cancellationToken) =>
+        preview.IsTruncated
+            ? await File.ReadAllTextAsync(preview.Path, cancellationToken)
+            : preview.Text;
 
     private static TextBlock CreateMessage(string text) => new()
     {
@@ -166,6 +203,8 @@ public partial class PreviewWindow : Window
 
     private void OnClosed(object sender, EventArgs e)
     {
+        m_previewCancellation.Cancel();
+        m_previewCancellation.Dispose();
         if (m_viewModel != null)
             m_viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         PreviewHost.Content = null;

@@ -108,9 +108,11 @@ public sealed class PreviewServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(result, Is.TypeOf<TextPreviewContent>());
-            Assert.That(((TextPreviewContent)result).Text, Does.EndWith("… preview truncated …"));
-            Assert.That(((TextPreviewContent)result).Text.Split('\n').Length, Is.LessThanOrEqualTo(602));
-            Assert.That(((TextPreviewContent)result).Text.Length, Is.LessThan(10_000));
+            var textPreview = (TextPreviewContent)result;
+            Assert.That(textPreview.Text, Does.EndWith("… preview truncated …"));
+            Assert.That(textPreview.Text.Split('\n').Length, Is.LessThanOrEqualTo(602));
+            Assert.That(textPreview.Text.Length, Is.LessThan(10_000));
+            Assert.That(textPreview.IsTruncated, Is.True);
         });
     }
 
