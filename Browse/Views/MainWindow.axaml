@@ -47,6 +47,7 @@
       </MenuItem>
       <Separator />
       <MenuItem Header="Compress" Click="OnCreateZipClicked" />
+      <MenuItem Header="Expand archive" Click="OnExpandZipClicked" IsVisible="{Binding IsZipArchive}" />
       <MenuItem Header="Delete" Click="OnDeleteClicked" />
     </ContextMenu>
     <ContextMenu x:Key="ColumnContextMenu">

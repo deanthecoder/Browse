@@ -630,6 +630,32 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    public async Task ExpandZipAsync()
+    {
+        if (m_selectedItems.Count != 1 || !m_selectedItems[0].IsZipArchive)
+            return;
+        var selectedItem = m_selectedItems[0];
+        var column = Columns.FirstOrDefault(candidate => candidate.Items.Contains(selectedItem));
+        var parent = new DirectoryInfo(Path.GetDirectoryName(selectedItem.FullPath) ?? CurrentPath);
+        try
+        {
+            StatusText = $"Expanding {selectedItem.Name}…";
+            var output = await m_fileOperationService.ExpandZipAsync(new FileInfo(selectedItem.FullPath));
+            column?.SetSelectionPaths([output.FullName]);
+            m_directoryService.Invalidate(parent);
+            await ReloadCurrentAsync();
+            var outputItem = column?.Items.FirstOrDefault(item =>
+                string.Equals(item.FullPath, output.FullName, StringComparison.OrdinalIgnoreCase));
+            if (column != null && outputItem != null)
+                await SelectAsync(column, [outputItem]);
+            StatusText = $"Expanded to {output.Name}.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = ex.Message;
+        }
+    }
+
     public async Task DeleteSelectionAsync()
     {
         if (m_selectedItems.Count == 0)

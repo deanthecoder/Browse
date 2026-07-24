@@ -47,6 +47,7 @@ public sealed class BrowserItem
     public string Name { get; }
     public string FullPath { get; }
     public bool IsDirectory { get; }
+    public bool IsZipArchive => !IsDirectory && Path.GetExtension(Name).Equals(".zip", StringComparison.OrdinalIgnoreCase);
     public bool IsDotFolder { get; }
     public bool IsHidden { get; }
     public bool IsUnavailable { get; }

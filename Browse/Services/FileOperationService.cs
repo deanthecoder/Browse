@@ -121,6 +121,57 @@ public sealed class FileOperationService
             }
         }, cancellationToken);
 
+    public Task<FileSystemInfo> ExpandZipAsync(FileInfo source, CancellationToken cancellationToken = default) =>
+        Task.Run<FileSystemInfo>(() =>
+        {
+            using var archive = ZipFile.OpenRead(source.FullName);
+            var files = archive.Entries.Where(entry => !string.IsNullOrEmpty(entry.Name)).ToArray();
+            var parent = source.Directory ?? throw new IOException("The archive has no parent folder.");
+            if (files.Length == 1)
+            {
+                var fileName = Path.GetFileName(NormalizeArchivePath(files[0].FullName));
+                if (string.IsNullOrWhiteSpace(fileName))
+                    throw new InvalidDataException("The archive does not contain a valid file name.");
+                var output = new FileInfo(GetAvailablePath(Path.Combine(parent.FullName, fileName)));
+                try
+                {
+                    ExtractFile(files[0], output, cancellationToken);
+                    return output;
+                }
+                catch
+                {
+                    output.Delete();
+                    throw;
+                }
+            }
+
+            var folderName = Path.GetFileNameWithoutExtension(source.Name);
+            var destination = new DirectoryInfo(GetAvailablePath(Path.Combine(parent.FullName, folderName)));
+            destination.Create();
+            try
+            {
+                foreach (var entry in archive.Entries)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var outputPath = GetSafeArchivePath(destination, entry.FullName);
+                    if (string.IsNullOrEmpty(entry.Name))
+                    {
+                        Directory.CreateDirectory(outputPath);
+                        continue;
+                    }
+                    var output = new FileInfo(outputPath);
+                    output.Directory?.Create();
+                    ExtractFile(entry, output, cancellationToken);
+                }
+                return destination;
+            }
+            catch
+            {
+                destination.Delete(true);
+                throw;
+            }
+        }, cancellationToken);
+
     public void Open(BrowserItem item)
     {
         var startInfo = new ProcessStartInfo(item.FullPath) { UseShellExecute = true };
@@ -282,6 +333,32 @@ public sealed class FileOperationService
             cancellationToken.ThrowIfCancellationRequested();
             if (!child.Attributes.HasFlag(FileAttributes.ReparsePoint))
                 AddDirectoryToArchive(archive, child, $"{prefix}/{child.Name}", cancellationToken);
+        }
+    }
+
+    private static string GetSafeArchivePath(DirectoryInfo destination, string entryPath)
+    {
+        var destinationRoot = Path.GetFullPath(destination.FullName) + Path.DirectorySeparatorChar;
+        var outputPath = Path.GetFullPath(Path.Combine(destination.FullName, NormalizeArchivePath(entryPath)));
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!outputPath.StartsWith(destinationRoot, comparison))
+            throw new InvalidDataException("The archive contains an unsafe path.");
+        return outputPath;
+    }
+
+    private static string NormalizeArchivePath(string path) =>
+        path.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+
+    private static void ExtractFile(ZipArchiveEntry entry, FileInfo output, CancellationToken cancellationToken)
+    {
+        using var input = entry.Open();
+        using var destination = new FileStream(output.FullName, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        var buffer = new byte[64 * 1024];
+        int bytesRead;
+        while ((bytesRead = input.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            destination.Write(buffer, 0, bytesRead);
         }
     }
 

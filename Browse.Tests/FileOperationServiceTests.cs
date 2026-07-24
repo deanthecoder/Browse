@@ -9,6 +9,7 @@
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
 using System.Security.Cryptography;
+using System.IO.Compression;
 using Browse.Models;
 using Browse.Services;
 using DTC.Core;
@@ -75,5 +76,68 @@ public sealed class FileOperationServiceTests
 
         Assert.That(Directory.Exists(Path.Combine(temp.FullName, "folder (2)")), Is.False);
         Assert.That(folder.Exists, Is.True);
+    }
+
+    [Test]
+    public async Task CheckSingleArchivedFileIsExpandedAlongsideZip()
+    {
+        using var temp = new TempDirectory();
+        var zip = new FileInfo(Path.Combine(temp.FullName, "Archive.zip"));
+        using (var archive = ZipFile.Open(zip.FullName, ZipArchiveMode.Create))
+        {
+            var entry = archive.CreateEntry("nested/readme.txt");
+            await using var writer = new StreamWriter(entry.Open());
+            await writer.WriteAsync("expanded");
+        }
+        await File.WriteAllTextAsync(Path.Combine(temp.FullName, "readme.txt"), "existing");
+
+        var output = await new FileOperationService().ExpandZipAsync(zip);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(output, Is.TypeOf<FileInfo>());
+            Assert.That(output.Name, Is.EqualTo("readme (2).txt"));
+            Assert.That(File.ReadAllText(output.FullName), Is.EqualTo("expanded"));
+        });
+    }
+
+    [Test]
+    public async Task CheckMultipleArchivedFilesAreExpandedIntoNamedFolder()
+    {
+        using var temp = new TempDirectory();
+        var zip = new FileInfo(Path.Combine(temp.FullName, "Archive.zip"));
+        using (var archive = ZipFile.Open(zip.FullName, ZipArchiveMode.Create))
+        {
+            archive.CreateEntry("one.txt").Open().Dispose();
+            archive.CreateEntry("nested/two.txt").Open().Dispose();
+        }
+
+        var output = await new FileOperationService().ExpandZipAsync(zip);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(output, Is.TypeOf<DirectoryInfo>());
+            Assert.That(output.Name, Is.EqualTo("Archive"));
+            Assert.That(File.Exists(Path.Combine(output.FullName, "one.txt")), Is.True);
+            Assert.That(File.Exists(Path.Combine(output.FullName, "nested", "two.txt")), Is.True);
+        });
+    }
+
+    [Test]
+    public void CheckUnsafeArchivePathIsRejected()
+    {
+        using var temp = new TempDirectory();
+        var zip = new FileInfo(Path.Combine(temp.FullName, "Archive.zip"));
+        using (var archive = ZipFile.Open(zip.FullName, ZipArchiveMode.Create))
+        {
+            archive.CreateEntry("../outside.txt").Open().Dispose();
+            archive.CreateEntry("safe.txt").Open().Dispose();
+        }
+
+        Assert.That(
+            async () => await new FileOperationService().ExpandZipAsync(zip),
+            Throws.TypeOf<InvalidDataException>());
+        Assert.That(File.Exists(Path.Combine(temp.FullName, "outside.txt")), Is.False);
+        Assert.That(Directory.Exists(Path.Combine(temp.FullName, "Archive")), Is.False);
     }
 }

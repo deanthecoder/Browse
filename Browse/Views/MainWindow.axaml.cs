@@ -319,6 +319,7 @@ public partial class MainWindow : Window
     private void OnRenameClicked(object sender, RoutedEventArgs e) => BeginRename();
     private async void OnCalculateSizeClicked(object sender, RoutedEventArgs e) => await ViewModel.CalculateFolderSizeAsync();
     private async void OnCreateZipClicked(object sender, RoutedEventArgs e) => await ViewModel.CreateZipAsync();
+    private async void OnExpandZipClicked(object sender, RoutedEventArgs e) => await ViewModel.ExpandZipAsync();
     private async void OnDeleteClicked(object sender, RoutedEventArgs e) => await ViewModel.DeleteSelectionAsync();
     private async void OnCopyPathsClicked(object sender, RoutedEventArgs e) => await CopyTextAsync(ViewModel.GetSelectedPaths());
     private async void OnCopyMd5Clicked(object sender, RoutedEventArgs e) => await CopyGeneratedTextAsync(ViewModel.GetMd5TextAsync());
