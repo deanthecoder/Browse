@@ -328,9 +328,9 @@ public partial class MainWindow : Window
     {
         var hasModalOverlay = ViewModel.IsGoToVisible || ViewModel.IsRenameVisible ||
                               ViewModel.IsSettingsVisible || ViewModel.IsNewFolderVisible;
-        if (!hasModalOverlay && e.Key is Key.Left or Key.Right)
+        if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key is Key.Left or Key.Right)
         {
-            MoveColumnFocus(e.Key == Key.Left ? -1 : 1);
+            await MoveColumnFocusAsync(e.Key == Key.Left ? -1 : 1);
             e.Handled = true;
             return;
         }
@@ -401,12 +401,18 @@ public partial class MainWindow : Window
         }
     }
 
-    private void MoveColumnFocus(int direction)
+    private async Task MoveColumnFocusAsync(int direction)
     {
         if (m_focusedColumn?.DataContext is not FolderColumnViewModel currentColumn)
             return;
         var targetIndex = ViewModel.Columns.IndexOf(currentColumn) + direction;
-        if (targetIndex < 0 || targetIndex >= ViewModel.Columns.Count)
+        if (targetIndex < 0)
+        {
+            if (await ViewModel.NavigateToParentAsync())
+                FocusFirstColumnItem();
+            return;
+        }
+        if (targetIndex >= ViewModel.Columns.Count)
             return;
         var targetColumn = ViewModel.Columns[targetIndex];
         var targetList = this.GetVisualDescendants()
@@ -434,7 +440,8 @@ public partial class MainWindow : Window
                 return;
             SetFocusedColumn(firstList);
             firstList.Focus();
-            if (firstList.ItemsView.Count > 0)
+            RestoreColumnSelection(firstList, firstColumn);
+            if (firstList.SelectedIndex < 0 && firstList.ItemsView.Count > 0)
                 firstList.SelectedIndex = 0;
             if (firstList.SelectedItem != null)
                 firstList.ScrollIntoView(firstList.SelectedItem);

@@ -319,6 +319,22 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         await AddColumnAsync(directory, m_navigationCancellation.Token);
     }
 
+    public async Task<bool> NavigateToParentAsync()
+    {
+        var currentRoot = Columns.FirstOrDefault()?.Directory;
+        var parent = currentRoot?.Parent;
+        if (currentRoot == null || parent == null)
+            return false;
+
+        await NavigateToAsync(parent.FullName);
+        var parentColumn = Columns.FirstOrDefault();
+        var previousRoot = parentColumn?.Items.FirstOrDefault(item =>
+            item.IsDirectory && string.Equals(item.FullPath, currentRoot.FullName, StringComparison.OrdinalIgnoreCase));
+        if (parentColumn != null && previousRoot != null)
+            await SelectAsync(parentColumn, [previousRoot]);
+        return true;
+    }
+
     public async Task SelectAsync(FolderColumnViewModel column, IReadOnlyList<BrowserItem> selection)
     {
         column.SetSelection(selection);
