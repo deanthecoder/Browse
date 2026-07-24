@@ -346,12 +346,23 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public void SetContextSelection(FolderColumnViewModel column, IReadOnlyList<BrowserItem> selection)
     {
         column.SetSelection(selection);
+        ActivateColumn(column);
+    }
+
+    public void ActivateColumn(FolderColumnViewModel column)
+    {
+        if (!Columns.Contains(column))
+            return;
+        var selection = column.Items.Where(item => column.IsSelectedPath(item.FullPath)).ToArray();
         m_selectedItems.Clear();
         m_selectedItems.AddRange(selection);
         FolderSize = null;
         FolderSizeExact = null;
         _ = UpdatePreviewAsync();
-        StatusText = $"{selection.Count:N0} selected";
+        CurrentPath = selection.Length == 1 && selection[0].IsDirectory
+            ? selection[0].FullPath
+            : column.Directory.FullName;
+        StatusText = selection.Length == 0 ? $"{column.Items.Count:N0} items" : $"{selection.Length:N0} selected";
     }
 
     public void ShowGoTo()

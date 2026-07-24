@@ -437,6 +437,8 @@ public partial class MainWindow : Window
         m_focusedColumn?.Classes.Remove("activeColumn");
         m_focusedColumn = listBox;
         m_focusedColumn?.Classes.Add("activeColumn");
+        if (listBox.DataContext is FolderColumnViewModel column)
+            ViewModel.ActivateColumn(column);
     }
 
     private void SelectByTypedPrefix(string character)
