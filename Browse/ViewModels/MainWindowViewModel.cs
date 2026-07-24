@@ -555,10 +555,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         try
         {
-            var parent = new DirectoryInfo(Path.GetDirectoryName(m_selectedItems[0].FullPath) ?? CurrentPath);
-            await m_fileOperationService.RenameAsync(m_selectedItems[0], RenameText);
+            var selectedItem = m_selectedItems[0];
+            var column = Columns.FirstOrDefault(candidate => candidate.Items.Contains(selectedItem));
+            var parent = new DirectoryInfo(Path.GetDirectoryName(selectedItem.FullPath) ?? CurrentPath);
+            var renamedPath = Path.Combine(parent.FullName, RenameText.Trim());
+            await m_fileOperationService.RenameAsync(selectedItem, RenameText);
+            column?.SetSelectionPaths([renamedPath]);
             m_directoryService.Invalidate(parent);
             await ReloadCurrentAsync();
+            var renamedItem = column?.Items.FirstOrDefault(item =>
+                string.Equals(item.FullPath, renamedPath, StringComparison.OrdinalIgnoreCase));
+            if (column != null && renamedItem != null)
+                await SelectAsync(column, [renamedItem]);
             StatusText = "Renamed.";
         }
         catch (Exception ex)

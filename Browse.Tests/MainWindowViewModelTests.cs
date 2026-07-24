@@ -73,4 +73,21 @@ public sealed class MainWindowViewModelTests
         Assert.That(column.Items[2], Is.SameAs(selected));
     }
 
+    [Test]
+    public void CheckColumnRefreshCanSelectReplacementPath()
+    {
+        using var temp = new TempDirectory();
+        var original = new FileInfo(Path.Combine(temp.FullName, "before.txt"));
+        var renamed = new FileInfo(Path.Combine(temp.FullName, "after.txt"));
+        File.WriteAllText(original.FullName, "before");
+        File.WriteAllText(renamed.FullName, "after");
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([new BrowserItem(original)]);
+
+        column.SetSelectionPaths([renamed.FullName]);
+        column.ReplaceItems([new BrowserItem(renamed)]);
+
+        Assert.That(column.IsSelectedPath(column.Items[0].FullPath), Is.True);
+    }
+
 }

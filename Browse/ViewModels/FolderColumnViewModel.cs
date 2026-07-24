@@ -38,10 +38,13 @@ public sealed class FolderColumnViewModel : ViewModelBase
     public ObservableCollection<BrowserItem> Items { get; } = [];
 
     public void SetSelection(IEnumerable<BrowserItem> items)
+        => SetSelectionPaths(items.Select(item => item.FullPath));
+
+    public void SetSelectionPaths(IEnumerable<string> paths)
     {
         m_selectedPaths.Clear();
-        foreach (var item in items)
-            m_selectedPaths.Add(item.FullPath);
+        foreach (var path in paths)
+            m_selectedPaths.Add(path);
     }
 
     public void ReplaceItems(IReadOnlyList<BrowserItem> items)

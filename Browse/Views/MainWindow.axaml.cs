@@ -553,6 +553,7 @@ public partial class MainWindow : Window
         if (e.Key == Key.Enter)
         {
             await ViewModel.CommitRenameAsync();
+            m_focusedColumn?.Focus();
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
