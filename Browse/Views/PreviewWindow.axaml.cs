@@ -15,8 +15,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
+using AvaloniaEdit;
+using AvaloniaEdit.Document;
 using Browse.Models;
 using Browse.Services;
 using Browse.ViewModels;
@@ -106,21 +107,7 @@ public partial class PreviewWindow : Window
             };
         }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Code } code)
-        {
-            return new ScrollViewer
-            {
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Content = new CodeBlock
-                {
-                    Code = code.Text,
-                    Language = code.Language,
-                    ColorTheme = ThemeName.AtomOneDark,
-                    IsCodeWrapped = false,
-                    FontSize = 13
-                }
-            };
-        }
+            return CreateCodePreview(code);
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown } markdown)
         {
             return new ScrollViewer
@@ -148,6 +135,25 @@ public partial class PreviewWindow : Window
             };
         }
         return CreateMessage("No larger preview is available for this item.");
+    }
+
+    internal static TextEditor CreateCodePreview(TextPreviewContent code)
+    {
+        var editor = new TextEditor
+        {
+            Document = new TextDocument(code.Text),
+            IsReadOnly = true,
+            WordWrap = false,
+            ShowLineNumbers = true,
+            FontFamily = new FontFamily("Cascadia Code,Consolas,Menlo,Monospace"),
+            FontSize = 13,
+            Background = Brush.Parse("#1E1E1E"),
+            Foreground = Brush.Parse("#D4D4D4")
+        };
+        var colorizer = TextMateCodeColorizer.Create(code.Path, code.Text);
+        if (colorizer != null)
+            editor.TextArea.TextView.LineTransformers.Add(colorizer);
+        return editor;
     }
 
     private static TextBlock CreateMessage(string text) => new()

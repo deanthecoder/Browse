@@ -21,6 +21,7 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.3.9" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.9" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.9" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.4.1" />
     <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.660" />
     <PackageReference Include="Avalonia.Diagnostics" Version="11.3.9">
       <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>

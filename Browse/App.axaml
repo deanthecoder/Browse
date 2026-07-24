@@ -20,6 +20,7 @@
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
     <icons:MaterialIconStyles />
+    <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
     <StyleInclude Source="avares://LiveMarkdown.Avalonia/Styles.axaml" />
     <StyleInclude Source="avares://Browse/Styles/BrowseTheme.axaml" />
   </Application.Styles>
