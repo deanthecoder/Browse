@@ -389,6 +389,11 @@ public partial class MainWindow : Window
             MoveColumnSelection(e.Key == Key.Up ? -1 : 1);
             e.Handled = true;
         }
+        else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key is Key.Home or Key.End)
+        {
+            MoveColumnSelectionToBoundary(e.Key == Key.End);
+            e.Handled = true;
+        }
         else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.KeySymbol is { Length: 1 } symbol && !char.IsControl(symbol[0]))
         {
             SelectByTypedPrefix(symbol);
@@ -467,7 +472,19 @@ public partial class MainWindow : Window
             return;
         var currentIndex = m_focusedColumn.SelectedIndex;
         var targetIndex = Math.Clamp(currentIndex < 0 ? 0 : currentIndex + direction, 0, m_focusedColumn.ItemsView.Count - 1);
-        m_focusedColumn.SelectedIndex = targetIndex;
+        SelectColumnIndex(targetIndex);
+    }
+
+    private void MoveColumnSelectionToBoundary(bool end)
+    {
+        if (m_focusedColumn == null || m_focusedColumn.ItemsView.Count == 0)
+            return;
+        SelectColumnIndex(end ? m_focusedColumn.ItemsView.Count - 1 : 0);
+    }
+
+    private void SelectColumnIndex(int index)
+    {
+        m_focusedColumn.SelectedIndex = index;
         if (m_focusedColumn.SelectedItem != null)
             m_focusedColumn.ScrollIntoView(m_focusedColumn.SelectedItem);
     }
