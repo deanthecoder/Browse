@@ -256,7 +256,14 @@ public partial class MainWindow : Window
         m_dragSource = null;
     }
 
-    private void OnItemDoubleTapped(object sender, TappedEventArgs e) => ViewModel.OpenSelected();
+    private void OnItemDoubleTapped(object sender, TappedEventArgs e)
+    {
+        if (e.Source is not Visual source ||
+            source is not ListBoxItem && source.FindAncestorOfType<ListBoxItem>() == null)
+            return;
+        ViewModel.OpenSelected();
+        e.Handled = true;
+    }
 
     private void OnSettingsClicked(object sender, RoutedEventArgs e) => ViewModel.IsSettingsVisible = true;
     private void OnSettingsCloseClicked(object sender, RoutedEventArgs e) => ViewModel.IsSettingsVisible = false;
