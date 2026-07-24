@@ -34,6 +34,7 @@ namespace Browse.Views;
 /// </remarks>
 public partial class PreviewWindow : Window
 {
+    private static readonly TimeSpan PreviewDelay = TimeSpan.FromMilliseconds(500);
     private MainWindowViewModel m_viewModel;
     private CancellationTokenSource m_previewCancellation = new();
     private bool m_updateQueued;
@@ -95,6 +96,7 @@ public partial class PreviewWindow : Window
     {
         try
         {
+            await Task.Delay(PreviewDelay, cancellationToken);
             var preview = await CreatePreviewAsync(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (IsVisible)
