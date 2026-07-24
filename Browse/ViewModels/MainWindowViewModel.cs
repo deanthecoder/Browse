@@ -617,6 +617,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         if (m_selectedItems.Count == 0)
             return;
         var items = m_selectedItems.ToArray();
+        var column = Columns.FirstOrDefault(candidate => items.Any(candidate.Items.Contains));
+        var replacementPath = column?.GetSelectionPathAfterRemoving(items);
         var parents = items
             .Select(item => Path.GetDirectoryName(item.FullPath))
             .Where(path => !string.IsNullOrWhiteSpace(path))
@@ -627,9 +629,16 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         {
             StatusText = $"Moving {items.Length:N0} item(s) to the recycle bin…";
             await m_fileOperationService.MoveToTrashAsync(items);
+            column?.SetSelectionPaths(replacementPath == null ? [] : [replacementPath]);
             foreach (var parent in parents)
                 m_directoryService.Invalidate(parent);
             await ReloadCurrentAsync();
+            if (column != null)
+            {
+                var replacement = column.Items.FirstOrDefault(item =>
+                    string.Equals(item.FullPath, replacementPath, StringComparison.OrdinalIgnoreCase));
+                await SelectAsync(column, replacement == null ? [] : [replacement]);
+            }
             StatusText = $"Moved {items.Length:N0} item(s) to the recycle bin.";
         }
         catch (Exception ex)

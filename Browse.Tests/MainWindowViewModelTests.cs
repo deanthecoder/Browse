@@ -90,4 +90,22 @@ public sealed class MainWindowViewModelTests
         Assert.That(column.IsSelectedPath(column.Items[0].FullPath), Is.True);
     }
 
+    [TestCase(1, "third.txt")]
+    [TestCase(2, "second.txt")]
+    public void CheckColumnChoosesAdjacentItemAfterRemoval(int removedIndex, string expectedName)
+    {
+        using var temp = new TempDirectory();
+        var files = new[] { "first.txt", "second.txt", "third.txt" }
+            .Select(name => new FileInfo(Path.Combine(temp.FullName, name)))
+            .ToArray();
+        foreach (var file in files)
+            File.WriteAllText(file.FullName, file.Name);
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems(files.Select(file => new BrowserItem(file)).ToArray());
+
+        var selectedPath = column.GetSelectionPathAfterRemoving([column.Items[removedIndex]]);
+
+        Assert.That(selectedPath, Is.EqualTo(Path.Combine(temp.FullName, expectedName)));
+    }
+
 }

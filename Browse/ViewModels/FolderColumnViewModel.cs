@@ -47,6 +47,30 @@ public sealed class FolderColumnViewModel : ViewModelBase
             m_selectedPaths.Add(path);
     }
 
+    public string GetSelectionPathAfterRemoving(IEnumerable<BrowserItem> items)
+    {
+        var removedPaths = items
+            .Select(item => item.FullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var firstRemovedIndex = -1;
+        for (var index = 0; index < Items.Count; index++)
+        {
+            if (!removedPaths.Contains(Items[index].FullPath))
+                continue;
+            firstRemovedIndex = index;
+            break;
+        }
+        if (firstRemovedIndex < 0)
+            return null;
+
+        var remainingItems = Items
+            .Where(item => !removedPaths.Contains(item.FullPath))
+            .ToArray();
+        return remainingItems.Length == 0
+            ? null
+            : remainingItems[Math.Min(firstRemovedIndex, remainingItems.Length - 1)].FullPath;
+    }
+
     public void ReplaceItems(IReadOnlyList<BrowserItem> items)
     {
         var existing = Items.ToDictionary(item => item.FullPath, StringComparer.OrdinalIgnoreCase);
