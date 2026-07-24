@@ -13,6 +13,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Browse.Services;
 using Browse.ViewModels;
 using Browse.Views;
@@ -30,6 +31,7 @@ public class App : Application
     private readonly SettingsService m_settingsService = new();
     private TrayIcon m_trayIcon;
     private WindowsGlobalHotKeyHost m_hotKeyHost;
+    private SingleInstanceLaunchServer m_launchServer;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -40,8 +42,10 @@ public class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            var backgroundOnly = desktop.Args?.Any(argument => argument.Equals("--background", StringComparison.OrdinalIgnoreCase)) == true;
-            var requestedPath = desktop.Args?.FirstOrDefault(argument => !argument.StartsWith("--", StringComparison.Ordinal));
+            m_launchServer = new SingleInstanceLaunchServer(args =>
+                Dispatcher.UIThread.Post(() => HandleSecondaryLaunch(args)));
+            var backgroundOnly = IsBackgroundLaunch(desktop.Args);
+            var requestedPath = GetRequestedPath(desktop.Args);
             if (!backgroundOnly)
             {
                 desktop.MainWindow = CreateWindow(requestedPath, false);
@@ -57,12 +61,25 @@ public class App : Application
             desktop.Exit += (_, _) =>
             {
                 m_hotKeyHost?.Close();
+                m_launchServer?.Dispose();
                 TrayIcon.SetIcons(this, null);
                 m_trayIcon?.Dispose();
             };
         }
         base.OnFrameworkInitializationCompleted();
     }
+
+    private void HandleSecondaryLaunch(IReadOnlyList<string> arguments)
+    {
+        if (!IsBackgroundLaunch(arguments))
+            CreateWindow(GetRequestedPath(arguments));
+    }
+
+    private static bool IsBackgroundLaunch(IEnumerable<string> arguments) =>
+        arguments?.Any(argument => argument.Equals("--background", StringComparison.OrdinalIgnoreCase)) == true;
+
+    private static string GetRequestedPath(IEnumerable<string> arguments) =>
+        arguments?.FirstOrDefault(argument => !argument.StartsWith("--", StringComparison.Ordinal));
 
     private MainWindow CreateWindow(string requestedPath = null, bool show = true, Window sourceWindow = null)
     {

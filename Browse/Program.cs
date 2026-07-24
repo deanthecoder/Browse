@@ -9,13 +9,24 @@
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
 using Avalonia;
+using Browse.Services;
+using DTC.Core;
 
 namespace Browse;
 
 internal static class Program
 {
     [STAThread]
-    public static void Main(string[] args) => BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    public static void Main(string[] args)
+    {
+        using var singleInstance = SingleInstanceGuard.TryAcquire("Browse");
+        if (singleInstance == null)
+        {
+            SingleInstanceLaunchServer.TrySend(args);
+            return;
+        }
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
 
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
