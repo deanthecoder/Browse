@@ -59,7 +59,7 @@ public sealed class BrowserItem
     private (MaterialIconKind Icon, IBrush Brush) GetIcon()
     {
         if (IsDirectory)
-            return (MaterialIconKind.Folder, Brush.Parse("#E7BD68"));
+            return (MaterialIconKind.Folder, Brush.Parse("#8DBCEB"));
         var extension = Path.GetExtension(Name).ToLowerInvariant();
         if (extension is ".zip" or ".7z" or ".rar" or ".tar" or ".gz" or ".bz2")
             return (MaterialIconKind.ZipBox, Brush.Parse("#D7A6FF"));

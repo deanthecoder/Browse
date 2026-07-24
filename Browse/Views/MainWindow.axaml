@@ -205,7 +205,7 @@
                 <TextBlock Text="{Binding PreviewContent}" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="10" />
               </ScrollViewer>
               <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFolderPreview}">
-                <icons:MaterialIcon Kind="Folder" Width="56" Height="56" Foreground="#E7BD68" HorizontalAlignment="Center" />
+                <icons:MaterialIcon Kind="Folder" Width="56" Height="56" Foreground="#8DBCEB" HorizontalAlignment="Center" />
                 <Button Content="Calculate size" Click="OnCalculateSizeClicked" IsVisible="{Binding CanCalculateFolderSize}" />
                 <TextBlock Text="{Binding FolderSize}" FontSize="15" TextWrapping="Wrap" TextAlignment="Center" />
                 <TextBlock Text="{Binding FolderSizeExact}" Classes="muted" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" />
