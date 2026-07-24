@@ -34,6 +34,7 @@ namespace Browse.Views;
 /// </remarks>
 public partial class PreviewWindow : Window
 {
+    private static readonly TimeSpan SyntaxHighlightingTimeout = TimeSpan.FromSeconds(2);
     private MainWindowViewModel m_viewModel;
     private CancellationTokenSource m_previewCancellation = new();
     private bool m_updateQueued;
@@ -133,7 +134,9 @@ public partial class PreviewWindow : Window
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Code } code)
         {
             var text = await ReadExpandedTextAsync(code, cancellationToken);
-            var colorizer = await Task.Run(() => TextMateCodeColorizer.Create(code.Path, text), cancellationToken);
+            var colorizer = await Task.Run(
+                () => TextMateCodeColorizer.Create(code.Path, text, SyntaxHighlightingTimeout, cancellationToken),
+                cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             return CreateCodePreview(code, text, colorizer);
         }
@@ -170,7 +173,7 @@ public partial class PreviewWindow : Window
     internal static TextEditor CreateCodePreview(TextPreviewContent code) =>
         CreateCodePreview(code, code.Text, TextMateCodeColorizer.Create(code.Path, code.Text));
 
-    private static TextEditor CreateCodePreview(TextPreviewContent code, string text, TextMateCodeColorizer colorizer)
+    internal static TextEditor CreateCodePreview(TextPreviewContent code, string text, TextMateCodeColorizer colorizer)
     {
         var editor = new TextEditor
         {

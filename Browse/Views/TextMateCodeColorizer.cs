@@ -12,6 +12,7 @@ using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
+using System.Diagnostics;
 using TextMateSharp.Grammars;
 using TextMateSharp.Registry;
 using TextMateSharp.Themes;
@@ -34,7 +35,11 @@ internal sealed class TextMateCodeColorizer(IReadOnlyList<IReadOnlyList<TextMate
     private static readonly Theme Theme = Theme.CreateFromRawTheme(RegistryOptions.LoadTheme(ThemeName.DarkPlus), RegistryOptions);
     private static readonly Dictionary<string, IBrush> BrushCache = new(StringComparer.OrdinalIgnoreCase);
 
-    public static TextMateCodeColorizer Create(string path, string text)
+    public static TextMateCodeColorizer Create(
+        string path,
+        string text,
+        TimeSpan? timeLimit = null,
+        CancellationToken cancellationToken = default)
     {
         var scope = RegistryOptions.GetScopeByExtension(Path.GetExtension(path));
         if (scope == null)
@@ -45,9 +50,16 @@ internal sealed class TextMateCodeColorizer(IReadOnlyList<IReadOnlyList<TextMate
 
         var tokenizedLines = new List<IReadOnlyList<StyledToken>>();
         IStateStack ruleStack = null;
+        var stopwatch = Stopwatch.StartNew();
         foreach (var line in text.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
         {
-            var result = grammar.TokenizeLine(line, ruleStack, TimeSpan.MaxValue);
+            cancellationToken.ThrowIfCancellationRequested();
+            var remaining = timeLimit == null ? TimeSpan.MaxValue : timeLimit.Value - stopwatch.Elapsed;
+            if (remaining <= TimeSpan.Zero)
+                return null;
+            var result = grammar.TokenizeLine(line, ruleStack, remaining);
+            if (timeLimit != null && stopwatch.Elapsed >= timeLimit.Value)
+                return null;
             ruleStack = result.RuleStack;
             tokenizedLines.Add(result.Tokens
                 .Select(token => CreateStyledToken(token.StartIndex, token.EndIndex, token.Scopes))

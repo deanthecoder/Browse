@@ -69,4 +69,32 @@ public sealed class PreviewWindowTests
             return true;
         }, CancellationToken.None);
     }
+
+    [Test]
+    public async Task CheckCodePreviewFallsBackToPlainEditorWhenColoringTimesOut()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
+        await session.Dispatch(() =>
+        {
+            var json = "{\"values\":[" + string.Join(',', Enumerable.Repeat("{\"value\":true}", 100_000)) + "]}";
+            var preview = new TextPreviewContent(
+                "large.json",
+                "/tmp/large.json",
+                null,
+                json,
+                TextPreviewMode.Code,
+                "json");
+            var colorizer = TextMateCodeColorizer.Create(
+                preview.Path,
+                preview.Text,
+                TimeSpan.FromMilliseconds(25));
+
+            var editor = PreviewWindow.CreateCodePreview(preview, preview.Text, colorizer);
+
+            Assert.That(colorizer, Is.Null);
+            Assert.That(editor.TextArea.TextView.LineTransformers, Has.None.TypeOf<TextMateCodeColorizer>());
+            Assert.That(editor.Text, Is.EqualTo(preview.Text));
+            return true;
+        }, CancellationToken.None);
+    }
 }
