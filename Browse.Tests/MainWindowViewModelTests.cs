@@ -8,6 +8,7 @@
 //
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
+using System.Collections.Specialized;
 using Browse.Models;
 using Browse.Services;
 using Browse.Services.Previews;
@@ -90,6 +91,68 @@ public sealed class MainWindowViewModelTests
         column.ReplaceItems([new BrowserItem(renamed)]);
 
         Assert.That(column.IsSelectedPath(column.Items[0].FullPath), Is.True);
+    }
+
+    [Test]
+    public void CheckRemovingItemOnlyMutatesOneColumnRow()
+    {
+        using var temp = new TempDirectory();
+        var files = Enumerable.Range(0, 100)
+            .Select(index => new FileInfo(Path.Combine(temp.FullName, $"file-{index:D3}.txt")))
+            .ToArray();
+        foreach (var file in files)
+            File.WriteAllText(file.FullName, file.Name);
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems(files.Select(file => new BrowserItem(file)).ToArray());
+        var expectedSelection = column.Items[51];
+        column.SetSelectionPaths([expectedSelection.FullPath]);
+        var changes = new List<NotifyCollectionChangedAction>();
+        column.Items.CollectionChanged += (_, e) => changes.Add(e.Action);
+
+        File.Delete(files[50].FullName);
+        column.ReplaceItems(temp
+            .EnumerateFiles()
+            .OrderBy(file => file.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(file => new BrowserItem(file))
+            .ToArray());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(changes, Is.EqualTo(new[] { NotifyCollectionChangedAction.Remove }));
+            Assert.That(column.Items[50], Is.SameAs(expectedSelection));
+            Assert.That(column.IsSelectedPath(column.Items[50].FullPath), Is.True);
+        });
+    }
+
+    [Test]
+    public void CheckAddingItemOnlyMutatesOneColumnRow()
+    {
+        using var temp = new TempDirectory();
+        var files = Enumerable.Range(0, 100)
+            .Select(index => new FileInfo(Path.Combine(temp.FullName, $"file-{index:D3}.txt")))
+            .ToArray();
+        foreach (var file in files)
+            File.WriteAllText(file.FullName, file.Name);
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems(files.Select(file => new BrowserItem(file)).ToArray());
+        var selected = column.Items[75];
+        column.SetSelection([selected]);
+        var changes = new List<NotifyCollectionChangedAction>();
+        column.Items.CollectionChanged += (_, e) => changes.Add(e.Action);
+
+        File.WriteAllText(Path.Combine(temp.FullName, "file-050a.txt"), "inserted");
+        column.ReplaceItems(temp
+            .EnumerateFiles()
+            .OrderBy(file => file.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(file => new BrowserItem(file))
+            .ToArray());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(changes, Is.EqualTo(new[] { NotifyCollectionChangedAction.Add }));
+            Assert.That(column.Items[76], Is.SameAs(selected));
+            Assert.That(column.IsSelectedPath(column.Items[76].FullPath), Is.True);
+        });
     }
 
     [TestCase(1, "third.txt")]

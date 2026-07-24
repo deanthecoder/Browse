@@ -75,12 +75,28 @@ public sealed class FolderColumnViewModel : ViewModelBase
     {
         var existing = Items.ToDictionary(item => item.FullPath, StringComparer.OrdinalIgnoreCase);
         var desired = items
-            .Select(item => m_selectedPaths.Contains(item.FullPath) && existing.TryGetValue(item.FullPath, out var selected) ? selected : item)
+            .Select(item => existing.TryGetValue(item.FullPath, out var current) &&
+                            (m_selectedPaths.Contains(item.FullPath) || HasSameDisplayMetadata(current, item))
+                ? current
+                : item)
             .ToArray();
+        var desiredPaths = desired
+            .Select(item => item.FullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        for (var index = Items.Count - 1; index >= 0; index--)
+        {
+            if (!desiredPaths.Contains(Items[index].FullPath))
+                Items.RemoveAt(index);
+        }
         for (var index = 0; index < desired.Length; index++)
         {
             if (index < Items.Count && ReferenceEquals(Items[index], desired[index]))
                 continue;
+            if (index < Items.Count && string.Equals(Items[index].FullPath, desired[index].FullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                Items[index] = desired[index];
+                continue;
+            }
             var existingIndex = Items.IndexOf(desired[index]);
             if (existingIndex >= 0)
                 Items.Move(existingIndex, index);
@@ -90,6 +106,16 @@ public sealed class FolderColumnViewModel : ViewModelBase
         while (Items.Count > desired.Length)
             Items.RemoveAt(Items.Count - 1);
     }
+
+    private static bool HasSameDisplayMetadata(BrowserItem first, BrowserItem second) =>
+        first.Name == second.Name &&
+        first.IsDirectory == second.IsDirectory &&
+        first.IsDotFolder == second.IsDotFolder &&
+        first.IsHidden == second.IsHidden &&
+        first.IsUnavailable == second.IsUnavailable &&
+        first.LastWriteTime == second.LastWriteTime &&
+        first.Size == second.Size &&
+        first.Icon == second.Icon;
 
     public bool IsSelectedPath(string path) => m_selectedPaths.Contains(path);
 
