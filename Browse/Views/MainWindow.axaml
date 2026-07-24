@@ -114,7 +114,7 @@
                     HorizontalScrollBarVisibility="Auto"
                     VerticalScrollBarVisibility="Disabled"
                     AllowAutoHide="False">
-        <ItemsControl ItemsSource="{Binding Columns}">
+        <ItemsControl x:Name="ColumnsItemsControl" ItemsSource="{Binding Columns}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <StackPanel Orientation="Horizontal" />

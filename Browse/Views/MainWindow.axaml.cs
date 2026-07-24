@@ -8,6 +8,7 @@
 //
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
+using System.Collections.Specialized;
 using Avalonia.Controls;
 using Avalonia;
 using Avalonia.Input;
@@ -30,6 +31,7 @@ namespace Browse.Views;
 /// </remarks>
 public partial class MainWindow : Window
 {
+    private const double ColumnWidth = 270;
     private readonly string m_requestedPath;
     private Point? m_dragStart;
     private ListBox m_dragSource;
@@ -60,7 +62,9 @@ public partial class MainWindow : Window
         AddHandler(PointerMovedEvent, OnColumnPointerMoved, RoutingStrategies.Tunnel, true);
         AddHandler(PointerReleasedEvent, OnColumnPointerReleased, RoutingStrategies.Tunnel, true);
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel, true);
+        ViewModel.Columns.CollectionChanged += OnColumnsChanged;
         Deactivated += (_, _) => ClearPendingDrag();
+        Closed += (_, _) => ViewModel.Columns.CollectionChanged -= OnColumnsChanged;
         Opened += OnOpened;
     }
 
@@ -417,6 +421,21 @@ public partial class MainWindow : Window
         ColumnScrollViewer.Offset = new Vector(
             ColumnScrollViewer.Extent.Width - ColumnScrollViewer.Viewport.Width,
             ColumnScrollViewer.Offset.Y);
+    }
+
+    private void OnColumnsChanged(object sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            ColumnsItemsControl.MinWidth = 0;
+            ColumnScrollViewer.Offset = default;
+        }
+        else if (e.Action == NotifyCollectionChangedAction.Add)
+        {
+            ColumnsItemsControl.MinWidth = Math.Max(
+                ColumnsItemsControl.MinWidth,
+                ViewModel.Columns.Count * ColumnWidth);
+        }
     }
 
     private void MoveColumnSelection(int direction)
