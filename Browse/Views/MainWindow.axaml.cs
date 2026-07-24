@@ -320,7 +320,11 @@ public partial class MainWindow : Window
     private async void OnCalculateSizeClicked(object sender, RoutedEventArgs e) => await ViewModel.CalculateFolderSizeAsync();
     private async void OnCreateZipClicked(object sender, RoutedEventArgs e) => await ViewModel.CreateZipAsync();
     private async void OnExpandZipClicked(object sender, RoutedEventArgs e) => await ViewModel.ExpandZipAsync();
-    private async void OnDeleteClicked(object sender, RoutedEventArgs e) => await ViewModel.DeleteSelectionAsync();
+    private async void OnDeleteClicked(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.DeleteSelectionAsync();
+        CloseContextMenu();
+    }
     private async void OnCopyPathsClicked(object sender, RoutedEventArgs e) => await CopyTextAsync(ViewModel.GetSelectedPaths());
     private async void OnCopyMd5Clicked(object sender, RoutedEventArgs e) => await CopyGeneratedTextAsync(ViewModel.GetMd5TextAsync());
     private async void OnCopySha256Clicked(object sender, RoutedEventArgs e) => await CopyGeneratedTextAsync(ViewModel.GetSha256TextAsync());

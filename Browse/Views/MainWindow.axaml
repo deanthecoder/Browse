@@ -23,17 +23,20 @@
       <Separator />
       <MenuItem StaysOpenOnClick="True" Padding="4">
         <MenuItem.Header>
-          <StackPanel Orientation="Horizontal" Spacing="4">
-            <Button Classes="chrome" Padding="8,5" ToolTip.Tip="Cut" Click="OnCutClicked">
+          <Grid ColumnDefinitions="Auto,Auto,Auto,12,Auto" ColumnSpacing="4">
+            <Button Grid.Column="0" Classes="chrome" Padding="8,5" ToolTip.Tip="Cut" Click="OnCutClicked">
               <icons:MaterialIcon Kind="ContentCut" Width="18" Height="18" />
             </Button>
-            <Button Classes="chrome" Padding="8,5" ToolTip.Tip="Copy" Click="OnCopyClicked">
+            <Button Grid.Column="1" Classes="chrome" Padding="8,5" ToolTip.Tip="Copy" Click="OnCopyClicked">
               <icons:MaterialIcon Kind="ContentCopy" Width="18" Height="18" />
             </Button>
-            <Button Tag="PasteAction" Classes="chrome" Padding="8,5" ToolTip.Tip="Paste" Click="OnPasteClicked" IsVisible="{Binding IsDirectory}">
+            <Button Grid.Column="2" Tag="PasteAction" Classes="chrome" Padding="8,5" ToolTip.Tip="Paste" Click="OnPasteClicked" IsVisible="{Binding IsDirectory}">
               <icons:MaterialIcon Kind="ContentPaste" Width="18" Height="18" />
             </Button>
-          </StackPanel>
+            <Button Grid.Column="4" Classes="chrome" Padding="8,5" ToolTip.Tip="Delete" Click="OnDeleteClicked">
+              <icons:MaterialIcon Kind="DeleteOutline" Width="18" Height="18" Foreground="#E98282" />
+            </Button>
+          </Grid>
         </MenuItem.Header>
       </MenuItem>
       <MenuItem Header="Rename" InputGesture="F2" Click="OnRenameClicked" />
@@ -48,7 +51,6 @@
       <Separator />
       <MenuItem Header="Compress" Click="OnCreateZipClicked" />
       <MenuItem Header="Expand archive" Click="OnExpandZipClicked" IsVisible="{Binding IsZipArchive}" />
-      <MenuItem Header="Delete" Click="OnDeleteClicked" />
     </ContextMenu>
     <ContextMenu x:Key="ColumnContextMenu">
       <MenuItem Header="New folder..." Click="OnNewFolderClicked" />
