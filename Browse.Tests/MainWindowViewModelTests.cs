@@ -9,6 +9,8 @@
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
 using Browse.Models;
+using Browse.Services;
+using Browse.Services.Previews;
 using Browse.ViewModels;
 using DTC.Core;
 
@@ -106,6 +108,50 @@ public sealed class MainWindowViewModelTests
         var selectedPath = column.GetSelectionPathAfterRemoving([column.Items[removedIndex]]);
 
         Assert.That(selectedPath, Is.EqualTo(Path.Combine(temp.FullName, expectedName)));
+    }
+
+    [Test]
+    public async Task CheckRapidSelectionOnlyCreatesFinalPreview()
+    {
+        using var temp = new TempDirectory();
+        var first = new FileInfo(Path.Combine(temp.FullName, "first.txt"));
+        var second = new FileInfo(Path.Combine(temp.FullName, "second.txt"));
+        await File.WriteAllTextAsync(first.FullName, "first");
+        await File.WriteAllTextAsync(second.FullName, "second");
+        var provider = new RecordingPreviewProvider();
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(),
+            new PreviewService([provider]),
+            new FileOperationService(),
+            new SettingsService());
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([new BrowserItem(first), new BrowserItem(second)]);
+        viewModel.Columns.Add(column);
+
+        column.SetSelection([column.Items[0]]);
+        viewModel.ActivateColumn(column);
+        await Task.Delay(50);
+        column.SetSelection([column.Items[1]]);
+        viewModel.ActivateColumn(column);
+        await provider.PreviewCreated.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.That(provider.CreatedNames, Is.EqualTo(new[] { second.Name }));
+    }
+
+    private sealed class RecordingPreviewProvider : IPreviewProvider
+    {
+        public List<string> CreatedNames { get; } = [];
+        public TaskCompletionSource PreviewCreated { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(true);
+
+        public Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken)
+        {
+            CreatedNames.Add(item.Name);
+            PreviewCreated.TrySetResult();
+            return Task.FromResult<PreviewContent>(new EmptyPreviewContent(item.Name));
+        }
     }
 
 }

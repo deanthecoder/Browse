@@ -29,6 +29,7 @@ namespace Browse.ViewModels;
 /// </remarks>
 public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 {
+    private static readonly TimeSpan PreviewDelay = TimeSpan.FromMilliseconds(500);
     private readonly DirectoryContentService m_directoryService;
     private readonly PreviewService m_previewService;
     private readonly FileOperationService m_fileOperationService;
@@ -329,7 +330,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_selectedItems.AddRange(selection);
         FolderSize = null;
         FolderSizeExact = null;
-        await UpdatePreviewAsync();
+        _ = UpdatePreviewAsync();
 
         if (selection.Count == 1 && selection[0].IsDirectory)
         {
@@ -759,21 +760,25 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_previewCancellation = new CancellationTokenSource();
         var cancellation = m_previewCancellation;
         var cancellationToken = cancellation.Token;
+        var selection = m_selectedItems.ToArray();
+        HasSelection = selection.Length > 0;
+        if (selection.Length == 1)
+        {
+            Preview = new EmptyPreviewContent(selection[0].Name, selection[0].FullPath);
+            PreviewIcon = selection[0].Icon;
+            PreviewIconBrush = selection[0].IconBrush;
+        }
         try
         {
-            var preview = await m_previewService.CreateAsync(m_selectedItems, cancellationToken);
+            if (selection.Length == 1)
+                await Task.Delay(PreviewDelay, cancellationToken);
+            var preview = await m_previewService.CreateAsync(selection, cancellationToken);
             if (cancellationToken.IsCancellationRequested)
             {
                 preview.Dispose();
                 cancellationToken.ThrowIfCancellationRequested();
             }
             Preview = preview;
-            HasSelection = m_selectedItems.Count > 0;
-            if (m_selectedItems.Count == 1)
-            {
-                PreviewIcon = m_selectedItems[0].Icon;
-                PreviewIconBrush = m_selectedItems[0].IconBrush;
-            }
         }
         catch (OperationCanceledException)
         {
@@ -782,9 +787,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             Preview = new EmptyPreviewContent(
-                m_selectedItems.Count == 1 ? m_selectedItems[0].Name : "Preview unavailable",
+                selection.Length == 1 ? selection[0].Name : "Preview unavailable",
                 details: $"Preview unavailable · {ex.Message}");
-            HasSelection = m_selectedItems.Count > 0;
+            HasSelection = selection.Length > 0;
         }
     }
 
