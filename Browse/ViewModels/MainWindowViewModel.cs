@@ -57,6 +57,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private string m_newFolderName;
     private DirectoryInfo m_newFolderDestination;
     private string m_folderSizeExact;
+    private long m_lastPreviewSelectionTime;
 
     public MainWindowViewModel(
         DirectoryContentService directoryService,
@@ -777,6 +778,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         var cancellation = m_previewCancellation;
         var cancellationToken = cancellation.Token;
         var selection = m_selectedItems.ToArray();
+        var shouldDelay = false;
+        if (selection.Length == 1)
+        {
+            var selectionTime = Environment.TickCount64;
+            shouldDelay = m_lastPreviewSelectionTime > 0 &&
+                          selectionTime - m_lastPreviewSelectionTime < PreviewDelay.TotalMilliseconds;
+            m_lastPreviewSelectionTime = selectionTime;
+        }
+        else
+        {
+            m_lastPreviewSelectionTime = 0;
+        }
         HasSelection = selection.Length > 0;
         if (selection.Length == 1)
         {
@@ -786,7 +799,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
         try
         {
-            if (selection.Length == 1)
+            if (shouldDelay)
                 await Task.Delay(PreviewDelay, cancellationToken);
             var preview = await m_previewService.CreateAsync(selection, cancellationToken);
             if (cancellationToken.IsCancellationRequested)
@@ -901,6 +914,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void ClearPreview()
     {
+        m_lastPreviewSelectionTime = 0;
         Preview = new EmptyPreviewContent();
         HasSelection = false;
         FolderSize = null;

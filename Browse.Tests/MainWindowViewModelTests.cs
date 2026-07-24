@@ -111,7 +111,40 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
-    public async Task CheckRapidSelectionOnlyCreatesFinalPreview()
+    public async Task CheckRapidSelectionDebouncesIntermediatePreviews()
+    {
+        using var temp = new TempDirectory();
+        var first = new FileInfo(Path.Combine(temp.FullName, "first.txt"));
+        var second = new FileInfo(Path.Combine(temp.FullName, "second.txt"));
+        var third = new FileInfo(Path.Combine(temp.FullName, "third.txt"));
+        await File.WriteAllTextAsync(first.FullName, "first");
+        await File.WriteAllTextAsync(second.FullName, "second");
+        await File.WriteAllTextAsync(third.FullName, "third");
+        var provider = new RecordingPreviewProvider();
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(),
+            new PreviewService([provider]),
+            new FileOperationService(),
+            new SettingsService());
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([new BrowserItem(first), new BrowserItem(second), new BrowserItem(third)]);
+        viewModel.Columns.Add(column);
+
+        column.SetSelection([column.Items[0]]);
+        viewModel.ActivateColumn(column);
+        await Task.Delay(50);
+        column.SetSelection([column.Items[1]]);
+        viewModel.ActivateColumn(column);
+        await Task.Delay(50);
+        column.SetSelection([column.Items[2]]);
+        viewModel.ActivateColumn(column);
+        await provider.SecondPreviewCreated.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.That(provider.CreatedNames, Is.EqualTo(new[] { first.Name, third.Name }));
+    }
+
+    [Test]
+    public async Task CheckLeisurelySelectionCreatesPreviewImmediately()
     {
         using var temp = new TempDirectory();
         var first = new FileInfo(Path.Combine(temp.FullName, "first.txt"));
@@ -130,18 +163,17 @@ public sealed class MainWindowViewModelTests
 
         column.SetSelection([column.Items[0]]);
         viewModel.ActivateColumn(column);
-        await Task.Delay(50);
+        await Task.Delay(550);
         column.SetSelection([column.Items[1]]);
         viewModel.ActivateColumn(column);
-        await provider.PreviewCreated.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
-        Assert.That(provider.CreatedNames, Is.EqualTo(new[] { second.Name }));
+        Assert.That(provider.CreatedNames, Is.EqualTo(new[] { first.Name, second.Name }));
     }
 
     private sealed class RecordingPreviewProvider : IPreviewProvider
     {
         public List<string> CreatedNames { get; } = [];
-        public TaskCompletionSource PreviewCreated { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource SecondPreviewCreated { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken) =>
             ValueTask.FromResult(true);
@@ -149,7 +181,8 @@ public sealed class MainWindowViewModelTests
         public Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken)
         {
             CreatedNames.Add(item.Name);
-            PreviewCreated.TrySetResult();
+            if (CreatedNames.Count == 2)
+                SecondPreviewCreated.TrySetResult();
             return Task.FromResult<PreviewContent>(new EmptyPreviewContent(item.Name));
         }
     }
