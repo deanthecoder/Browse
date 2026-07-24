@@ -66,6 +66,7 @@ public class App : Application
 
     private MainWindow CreateWindow(string requestedPath = null, bool show = true, Window sourceWindow = null)
     {
+        var settings = m_settingsService.Load();
         var viewModel = new MainWindowViewModel(
             m_directoryService,
             m_previewService,
@@ -73,7 +74,15 @@ public class App : Application
             m_settingsService);
         var window = new MainWindow(viewModel, requestedPath)
         {
-            Icon = IconLoader.LoadWindowIcon()
+            Icon = IconLoader.LoadWindowIcon(),
+            Width = GetWindowDimension(
+                sourceWindow?.WindowState == WindowState.Normal ? sourceWindow.Bounds.Width : settings.WindowWidth,
+                1035,
+                780),
+            Height = GetWindowDimension(
+                sourceWindow?.WindowState == WindowState.Normal ? sourceWindow.Bounds.Height : settings.WindowHeight,
+                410,
+                320)
         };
         if (sourceWindow != null)
         {
@@ -86,8 +95,16 @@ public class App : Application
                 ? new PixelPoint(sourceWindow.Position.X + NewWindowOffset, sourceWindow.Position.Y + NewWindowOffset)
                 : GetOffsetWindowPosition(sourceWindow.Position, screen.WorkingArea, size);
         }
+        window.Activated += (_, _) => RememberWindowSize(window, false);
+        window.SizeChanged += (_, _) =>
+        {
+            if (window.IsActive)
+                RememberWindowSize(window, false);
+        };
+        window.Deactivated += (_, _) => RememberWindowSize(window, true);
         window.Closed += (_, _) =>
         {
+            RememberWindowSize(window, true);
             if (!string.IsNullOrWhiteSpace(viewModel.CurrentPath))
             {
                 viewModel.Settings.DefaultPath = viewModel.CurrentPath;
@@ -98,6 +115,20 @@ public class App : Application
         if (show)
             window.Show();
         return window;
+    }
+
+    private static double GetWindowDimension(double value, double defaultValue, double minimum) =>
+        double.IsFinite(value) && value > 0 ? Math.Max(minimum, value) : defaultValue;
+
+    private void RememberWindowSize(Window window, bool save)
+    {
+        if (window.WindowState != WindowState.Normal || window.Bounds.Width <= 0 || window.Bounds.Height <= 0)
+            return;
+        var settings = m_settingsService.Load();
+        settings.WindowWidth = window.Bounds.Width;
+        settings.WindowHeight = window.Bounds.Height;
+        if (save)
+            m_settingsService.Save(settings);
     }
 
     internal static PixelPoint GetOffsetWindowPosition(PixelPoint sourcePosition, PixelRect workingArea, PixelSize windowSize)

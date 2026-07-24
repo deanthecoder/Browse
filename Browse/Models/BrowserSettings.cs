@@ -56,9 +56,23 @@ public sealed class BrowserSettings : UserSettingsBase
         set => Set(value);
     }
 
+    public double WindowWidth
+    {
+        get => Get<double>();
+        set => Set(value);
+    }
+
+    public double WindowHeight
+    {
+        get => Get<double>();
+        set => Set(value);
+    }
+
     protected override void ApplyDefaults()
     {
         DefaultPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         EnableGlobalShortcut = true;
+        WindowWidth = 1035;
+        WindowHeight = 410;
     }
 }
