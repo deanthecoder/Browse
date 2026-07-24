@@ -290,7 +290,7 @@ public partial class MainWindow : Window
         var path = selected?.IsDirectory == true
             ? selected.FullPath
             : selected == null ? ViewModel.CurrentPath : Path.GetDirectoryName(selected.FullPath);
-        (Application.Current as App)?.OpenWindow(path);
+        (Application.Current as App)?.OpenWindow(path, this);
     }
     private async void OnCutClicked(object sender, RoutedEventArgs e)
     {
@@ -691,7 +691,7 @@ public partial class MainWindow : Window
     private void OnOpenFavoriteInNewWindowClicked(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem menuItem && GetFavoriteEntry(menuItem) is { } entry)
-            (Application.Current as App)?.OpenWindow(entry.Path);
+            (Application.Current as App)?.OpenWindow(entry.Path, this);
     }
 
     private static SidebarEntryViewModel GetFavoriteEntry(MenuItem menuItem) =>

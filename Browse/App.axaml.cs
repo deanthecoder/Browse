@@ -23,6 +23,7 @@ namespace Browse;
 
 public class App : Application
 {
+    private const int NewWindowOffset = 32;
     private readonly DirectoryContentService m_directoryService = new();
     private readonly PreviewService m_previewService = new();
     private readonly FileOperationService m_fileOperationService = new();
@@ -32,7 +33,7 @@ public class App : Application
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
-    public void OpenWindow(string path = null) => CreateWindow(path);
+    public void OpenWindow(string path = null, Window sourceWindow = null) => CreateWindow(path, sourceWindow: sourceWindow);
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -63,7 +64,7 @@ public class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private MainWindow CreateWindow(string requestedPath = null, bool show = true)
+    private MainWindow CreateWindow(string requestedPath = null, bool show = true, Window sourceWindow = null)
     {
         var viewModel = new MainWindowViewModel(
             m_directoryService,
@@ -74,6 +75,17 @@ public class App : Application
         {
             Icon = IconLoader.LoadWindowIcon()
         };
+        if (sourceWindow != null)
+        {
+            var screen = sourceWindow.Screens.ScreenFromWindow(sourceWindow);
+            var scale = screen?.Scaling ?? sourceWindow.RenderScaling;
+            var size = new PixelSize(
+                (int)Math.Ceiling(window.Width * scale),
+                (int)Math.Ceiling(window.Height * scale));
+            window.Position = screen == null
+                ? new PixelPoint(sourceWindow.Position.X + NewWindowOffset, sourceWindow.Position.Y + NewWindowOffset)
+                : GetOffsetWindowPosition(sourceWindow.Position, screen.WorkingArea, size);
+        }
         window.Closed += (_, _) =>
         {
             if (!string.IsNullOrWhiteSpace(viewModel.CurrentPath))
@@ -86,6 +98,15 @@ public class App : Application
         if (show)
             window.Show();
         return window;
+    }
+
+    internal static PixelPoint GetOffsetWindowPosition(PixelPoint sourcePosition, PixelRect workingArea, PixelSize windowSize)
+    {
+        var maximumX = Math.Max(workingArea.X, workingArea.Right - windowSize.Width);
+        var maximumY = Math.Max(workingArea.Y, workingArea.Bottom - windowSize.Height);
+        return new PixelPoint(
+            Math.Clamp(sourcePosition.X + NewWindowOffset, workingArea.X, maximumX),
+            Math.Clamp(sourcePosition.Y + NewWindowOffset, workingArea.Y, maximumY));
     }
 
     private TrayIcon CreateTrayIcon(IClassicDesktopStyleApplicationLifetime desktop)
