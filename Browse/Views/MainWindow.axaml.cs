@@ -357,6 +357,11 @@ public partial class MainWindow : Window
             await ViewModel.DeleteSelectionAsync();
             e.Handled = true;
         }
+        else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key == Key.Enter)
+        {
+            ViewModel.OpenSelected();
+            e.Handled = true;
+        }
         else if (e.Key == Key.Escape)
         {
             ViewModel.IsGoToVisible = false;
