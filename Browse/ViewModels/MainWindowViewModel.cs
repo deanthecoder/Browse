@@ -677,9 +677,17 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task ReloadCurrentAsync()
     {
-        var columns = Columns.ToArray();
-        foreach (var column in columns)
+        for (var index = 0; index < Columns.Count; index++)
+        {
+            var column = Columns[index];
+            if (!Directory.Exists(column.Directory.FullName))
+            {
+                while (Columns.Count > index)
+                    RemoveLastColumn();
+                break;
+            }
             await LoadColumnAsync(column, m_navigationCancellation.Token);
+        }
     }
 
     private async Task AddColumnAsync(DirectoryInfo directory, CancellationToken cancellationToken)
