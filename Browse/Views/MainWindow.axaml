@@ -76,6 +76,8 @@
                   <Button Tag="{Binding}" Classes="chrome" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked">
                     <Button.ContextMenu>
                       <ContextMenu>
+                        <MenuItem Header="Open in new window..." Click="OnOpenFavoriteInNewWindowClicked" />
+                        <Separator />
                         <MenuItem Header="Remove favorite" Click="OnRemoveFavoriteClicked" />
                       </ContextMenu>
                     </Button.ContextMenu>

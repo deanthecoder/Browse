@@ -683,12 +683,20 @@ public partial class MainWindow : Window
     {
         if (sender is not MenuItem menuItem)
             return;
-        var entry = menuItem.DataContext as SidebarEntryViewModel;
-        if (entry == null && menuItem.Parent is ContextMenu { PlacementTarget: Button { Tag: SidebarEntryViewModel targetEntry } })
-            entry = targetEntry;
+        var entry = GetFavoriteEntry(menuItem);
         if (entry != null)
             ViewModel.RemoveFavorite(entry);
     }
+
+    private void OnOpenFavoriteInNewWindowClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && GetFavoriteEntry(menuItem) is { } entry)
+            (Application.Current as App)?.OpenWindow(entry.Path);
+    }
+
+    private static SidebarEntryViewModel GetFavoriteEntry(MenuItem menuItem) =>
+        menuItem.DataContext as SidebarEntryViewModel ??
+        ((menuItem.Parent as ContextMenu)?.PlacementTarget is Button { Tag: SidebarEntryViewModel entry } ? entry : null);
 
     private async Task RefreshClipboardPathsAsync()
     {
