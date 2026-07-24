@@ -15,6 +15,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
 using Browse.Models;
 using Browse.Services;
@@ -106,13 +107,18 @@ public partial class PreviewWindow : Window
         }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Code } code)
         {
-            return new CodeBlock
+            return new ScrollViewer
             {
-                Code = code.Text,
-                Language = code.Language,
-                ColorTheme = ThemeName.AtomOneDark,
-                IsCodeWrapped = false,
-                FontSize = 13
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = new CodeBlock
+                {
+                    Code = code.Text,
+                    Language = code.Language,
+                    ColorTheme = ThemeName.AtomOneDark,
+                    IsCodeWrapped = false,
+                    FontSize = 13
+                }
             };
         }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown } markdown)
