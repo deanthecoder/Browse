@@ -43,6 +43,16 @@ public sealed class MainWindowViewModelTests
         Assert.That(result, Is.EqualTo("\"some file.txt\""));
     }
 
+    [TestCase("  \"C:\\Program Files\\Browse\"  ", "C:\\Program Files\\Browse")]
+    [TestCase("'/Users/dean/My Folder'", "/Users/dean/My Folder")]
+    [TestCase("\"unmatched", "\"unmatched")]
+    public void CheckPathInputRemovesMatchingQuotes(string input, string expected)
+    {
+        var result = MainWindowViewModel.NormalizePathInput(input);
+
+        Assert.That(result, Is.EqualTo(expected));
+    }
+
     [Test]
     public void CheckColumnRefreshPreservesSelectedItemInstance()
     {

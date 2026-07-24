@@ -445,6 +445,17 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public static string JoinPaths(IEnumerable<BrowserItem> items, bool namesOnly = false) =>
         string.Join(' ', items.Select(item => QuoteIfNeeded(namesOnly ? item.Name : item.FullPath)));
 
+    /// <summary>
+    /// Removes whitespace and one matching pair of quotes from a pasted path.
+    /// </summary>
+    public static string NormalizePathInput(string path)
+    {
+        path = path?.Trim() ?? string.Empty;
+        if (path.Length >= 2 && path[0] == path[^1] && path[0] is '\'' or '"')
+            path = path[1..^1];
+        return path;
+    }
+
     public string GetSelectedPaths(bool namesOnly = false) => JoinPaths(m_selectedItems, namesOnly);
 
     public Task<string> GetMd5TextAsync() => GetHashTextAsync(HashAlgorithmName.MD5, "MD5");
@@ -929,7 +940,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private static string ExpandPath(string path)
     {
-        path = Environment.ExpandEnvironmentVariables(path?.Trim() ?? string.Empty);
+        path = Environment.ExpandEnvironmentVariables(NormalizePathInput(path));
         if (string.IsNullOrWhiteSpace(path))
             return string.Empty;
         if (path == "~")
