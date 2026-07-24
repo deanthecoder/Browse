@@ -71,12 +71,16 @@ public partial class MainWindow : Window
     private async void OnOpened(object sender, EventArgs e)
     {
         await ViewModel.InitializeAsync(m_requestedPath);
+        FocusFirstColumnItem();
     }
 
     private async void OnSidebarClicked(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: SidebarEntryViewModel entry })
+        {
             await ViewModel.NavigateToAsync(entry.Path);
+            FocusFirstColumnItem();
+        }
     }
 
     private async void OnColumnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -413,6 +417,25 @@ public partial class MainWindow : Window
             targetList.ScrollIntoView(targetList.SelectedItem);
     }
 
+    private void FocusFirstColumnItem()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var firstColumn = ViewModel.Columns.FirstOrDefault();
+            var firstList = this.GetVisualDescendants()
+                .OfType<ListBox>()
+                .FirstOrDefault(listBox => ReferenceEquals(listBox.DataContext, firstColumn));
+            if (firstList == null)
+                return;
+            SetFocusedColumn(firstList);
+            firstList.Focus();
+            if (firstList.ItemsView.Count > 0)
+                firstList.SelectedIndex = 0;
+            if (firstList.SelectedItem != null)
+                firstList.ScrollIntoView(firstList.SelectedItem);
+        }, DispatcherPriority.Background);
+    }
+
     private void BringLastColumnIntoViewIfNeeded()
     {
         var viewportRight = ColumnScrollViewer.Offset.X + ColumnScrollViewer.Viewport.Width;
@@ -498,6 +521,7 @@ public partial class MainWindow : Window
         if (e.Key == Key.Enter)
         {
             await ViewModel.SubmitGoToAsync();
+            FocusFirstColumnItem();
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
