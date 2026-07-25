@@ -49,6 +49,7 @@ public partial class MainWindow : Window
     private bool m_favoriteDragOutside;
     private bool m_favoriteDragCanceled;
     private bool m_suppressFavoriteClick;
+    private PreviewWindow m_previewWindow;
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext;
 
     public MainWindow() : this(new MainWindowViewModel(
@@ -296,7 +297,19 @@ public partial class MainWindow : Window
             ViewModel.OpenTerminal(m_contextDestination);
     }
     private void OnOpenClicked(object sender, RoutedEventArgs e) => ViewModel.OpenSelected();
-    private void OnExpandPreviewClicked(object sender, RoutedEventArgs e) => new PreviewWindow(ViewModel).Show(this);
+    private void OnExpandPreviewClicked(object sender, RoutedEventArgs e)
+    {
+        if (m_previewWindow != null)
+            return;
+        m_previewWindow = new PreviewWindow(ViewModel);
+        ExpandPreviewButton.IsEnabled = false;
+        m_previewWindow.Closed += (_, _) =>
+        {
+            m_previewWindow = null;
+            ExpandPreviewButton.IsEnabled = true;
+        };
+        m_previewWindow.Show(this);
+    }
     private void OnOpenInNewWindowClicked(object sender, RoutedEventArgs e)
     {
         var selected = ViewModel.SelectedItems.Count == 1 ? ViewModel.SelectedItems[0] : null;
