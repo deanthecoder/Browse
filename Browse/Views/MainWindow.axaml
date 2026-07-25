@@ -92,10 +92,7 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Grid ColumnDefinitions="18,*" ColumnSpacing="5" Margin="8,18,8,4">
-              <icons:MaterialIcon Kind="Harddisk" Width="14" Height="14" Foreground="#9CA5B2" />
-              <TextBlock Grid.Column="1" Text="DRIVES" Classes="muted" FontSize="11" FontWeight="SemiBold" />
-            </Grid>
+            <TextBlock Text="DRIVES" Classes="muted" FontSize="11" FontWeight="SemiBold" Margin="8,18,8,4" />
             <ItemsControl ItemsSource="{Binding Drives}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:SidebarEntryViewModel">
