@@ -697,7 +697,10 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
-        e.DragEffects = e.DataTransfer.Contains(DataFormat.File) ? DragDropEffects.Link : DragDropEffects.None;
+        var containsFolder = e.DataTransfer.TryGetFiles()?
+            .Select(item => item.TryGetLocalPath())
+            .Any(Directory.Exists) == true;
+        e.DragEffects = containsFolder ? DragDropEffects.Link : DragDropEffects.None;
         e.Handled = true;
     }
 
