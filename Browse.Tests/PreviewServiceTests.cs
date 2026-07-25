@@ -9,6 +9,9 @@
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
 using System.IO.Compression;
+using System.Reflection;
+using System.Text;
+using Avalonia.Headless;
 using Browse.Models;
 using Browse.Services;
 using Browse.Services.Previews;
@@ -126,6 +129,53 @@ public sealed class PreviewServiceTests
 
         Assert.That(result, Is.TypeOf<ArchivePreviewContent>());
         Assert.That(((ArchivePreviewContent)result).Text, Does.Contain("inside.txt"));
+    }
+
+    [Test]
+    public async Task CheckPdfPreviewRendersFirstPage()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "sample.pdf"));
+        WriteSamplePdf(file);
+
+        using var result = await session.Dispatch(
+            () => new PreviewService().CreateAsync([new BrowserItem(file)]),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<ImagePreviewContent>());
+            Assert.That(result.Details, Does.Contain("1 page"));
+            Assert.That(((ImagePreviewContent)result).Image.PixelSize.Width, Is.GreaterThan(0));
+            Assert.That(((ImagePreviewContent)result).Image.PixelSize.Height, Is.GreaterThan(0));
+        });
+    }
+
+    private static void WriteSamplePdf(FileInfo file)
+    {
+        const string pageContent = "BT /F1 18 Tf 20 50 Td (Browse PDF preview) Tj ET";
+        var objects = new[]
+        {
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+            $"<< /Length {pageContent.Length} >>\nstream\n{pageContent}\nendstream",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
+        };
+        var pdf = new StringBuilder("%PDF-1.4\n");
+        var offsets = new List<int>();
+        for (var index = 0; index < objects.Length; index++)
+        {
+            offsets.Add(Encoding.ASCII.GetByteCount(pdf.ToString()));
+            pdf.Append($"{index + 1} 0 obj\n{objects[index]}\nendobj\n");
+        }
+        var crossReferenceOffset = Encoding.ASCII.GetByteCount(pdf.ToString());
+        pdf.Append($"xref\n0 {objects.Length + 1}\n0000000000 65535 f \n");
+        foreach (var offset in offsets)
+            pdf.Append($"{offset:D10} 00000 n \n");
+        pdf.Append($"trailer\n<< /Size {objects.Length + 1} /Root 1 0 R >>\nstartxref\n{crossReferenceOffset}\n%%EOF\n");
+        File.WriteAllText(file.FullName, pdf.ToString(), Encoding.ASCII);
     }
 
     [TestCase("sample.html")]

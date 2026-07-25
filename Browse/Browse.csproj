@@ -30,6 +30,7 @@
     </PackageReference>
     <PackageReference Include="LiveMarkdown.Avalonia" Version="1.12.1" />
     <PackageReference Include="Material.Icons.Avalonia" Version="2.2.0" />
+    <PackageReference Include="PdfLibCore" Version="2.5.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../DTC.Core/DTC.Core/DTC.Core.csproj" />
