@@ -558,6 +558,14 @@ public partial class MainWindow : Window
             ViewModel.IsGoToVisible = false;
             e.Handled = true;
         }
+        else if (e.Key == Key.End && e.KeyModifiers == KeyModifiers.None)
+        {
+            var end = GoToTextBox.Text?.Length ?? 0;
+            GoToTextBox.CaretIndex = end;
+            GoToTextBox.SelectionStart = end;
+            GoToTextBox.SelectionEnd = end;
+            e.Handled = true;
+        }
     }
 
     private async void OnRenameKeyDown(object sender, KeyEventArgs e)
