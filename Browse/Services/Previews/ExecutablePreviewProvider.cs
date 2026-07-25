@@ -28,7 +28,7 @@ public sealed class ExecutablePreviewProvider : IPreviewProvider
 
     public ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken) =>
         ValueTask.FromResult(
-            !item.IsDirectory && SupportedExtensions.Contains(Path.GetExtension(item.Name), StringComparer.OrdinalIgnoreCase));
+            !item.IsDirectory && SupportedExtensions.Contains(item.EffectiveExtension, StringComparer.OrdinalIgnoreCase));
 
     public Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken) => Task.Run<PreviewContent>(() =>
     {

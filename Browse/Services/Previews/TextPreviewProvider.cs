@@ -42,24 +42,24 @@ public sealed class TextPreviewProvider : IPreviewProvider
     {
         var file = (FileInfo)item.Info;
         var sample = await ReadSampleAsync(file, cancellationToken);
-        var language = TextMateLanguageResolver.Resolve(file.FullName);
-        var mode = GetPreviewMode(file, language);
+        var language = TextMateLanguageResolver.Resolve($"file{item.EffectiveExtension}");
+        var mode = GetPreviewMode(item.EffectiveExtension, language);
         return new TextPreviewContent(
             item.Name,
             item.FullPath,
             $"{item.Size?.ToSize() ?? "Unknown size"} · Modified {item.LastWriteTime:g}",
             sample.Text,
             mode,
-            mode == TextPreviewMode.Code ? language : null,
+            language,
             sample.IsTruncated);
     }
 
-    private static TextPreviewMode GetPreviewMode(FileInfo file, string language)
+    private static TextPreviewMode GetPreviewMode(string extension, string language)
     {
-        if (file.Extension.Equals(".md", StringComparison.OrdinalIgnoreCase))
+        if (extension.Equals(".md", StringComparison.OrdinalIgnoreCase))
             return TextPreviewMode.Markdown;
-        if (file.Extension.Equals(".html", StringComparison.OrdinalIgnoreCase) ||
-            file.Extension.Equals(".htm", StringComparison.OrdinalIgnoreCase))
+        if (extension.Equals(".html", StringComparison.OrdinalIgnoreCase) ||
+            extension.Equals(".htm", StringComparison.OrdinalIgnoreCase))
             return TextPreviewMode.Html;
         return language == null ? TextPreviewMode.Plain : TextPreviewMode.Code;
     }

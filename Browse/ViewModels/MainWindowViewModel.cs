@@ -44,6 +44,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private bool m_isGoToVisible;
     private bool m_isSettingsVisible;
     private string m_goToPath;
+    private string m_extensionAliasesText;
+    private string m_extensionAliasStatus;
     private string m_currentPath;
     private string m_statusText = "Ready";
     private PreviewContent m_preview = new EmptyPreviewContent();
@@ -70,6 +72,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_fileOperationService = fileOperationService;
         m_settingsService = settingsService;
         Settings = settingsService.Load();
+        m_extensionAliasesText = string.Join(Environment.NewLine, Settings.ExtensionAliases ?? []);
         PopulateSidebar();
     }
 
@@ -132,6 +135,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             OnPropertyChanged();
             SaveSettingsAndReload();
         }
+    }
+
+    public string ExtensionAliasesText
+    {
+        get => m_extensionAliasesText;
+        set => SetField(ref m_extensionAliasesText, value);
+    }
+
+    public string ExtensionAliasStatus
+    {
+        get => m_extensionAliasStatus;
+        private set => SetField(ref m_extensionAliasStatus, value);
     }
 
     public PreviewContent Preview
@@ -759,6 +774,24 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         Settings.FavoritePaths = GetDefaultFavoritePaths();
         PopulateFavorites();
         m_settingsService.Save(Settings);
+    }
+
+    public async Task ApplyExtensionAliasesAsync()
+    {
+        if (!FileTypeAliasMap.TryNormalize(ExtensionAliasesText, out var mappings, out var error))
+        {
+            ExtensionAliasStatus = error;
+            return;
+        }
+
+        Settings.ExtensionAliases = mappings;
+        ExtensionAliasesText = string.Join(Environment.NewLine, mappings);
+        m_settingsService.Save(Settings);
+        m_directoryService.InvalidateAll();
+        await ReloadCurrentAsync();
+        ExtensionAliasStatus = mappings.Length == 0
+            ? "No file type aliases configured."
+            : $"Applied {mappings.Length:N0} file type alias{(mappings.Length == 1 ? string.Empty : "es")}.";
     }
 
     private async Task ReloadCurrentAsync()

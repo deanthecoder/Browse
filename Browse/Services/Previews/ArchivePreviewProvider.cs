@@ -24,7 +24,7 @@ public sealed class ArchivePreviewProvider : IPreviewProvider
 {
     public ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken) =>
         ValueTask.FromResult(
-            !item.IsDirectory && Path.GetExtension(item.Name).Equals(".zip", StringComparison.OrdinalIgnoreCase));
+            !item.IsDirectory && item.EffectiveExtension.Equals(".zip", StringComparison.OrdinalIgnoreCase));
 
     public Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken) => Task.Run<PreviewContent>(() =>
     {

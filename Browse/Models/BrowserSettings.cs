@@ -56,6 +56,12 @@ public sealed class BrowserSettings : UserSettingsBase
         set => Set(value);
     }
 
+    public string[] ExtensionAliases
+    {
+        get => Get<string[]>();
+        set => Set(value);
+    }
+
     public double WindowWidth
     {
         get => Get<double>();

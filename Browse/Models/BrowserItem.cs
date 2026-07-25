@@ -21,12 +21,13 @@ using Material.Icons;
 /// </remarks>
 public sealed class BrowserItem
 {
-    public BrowserItem(FileSystemInfo info)
+    public BrowserItem(FileSystemInfo info, FileTypeAliasMap aliases = null)
     {
         Info = info;
         Name = info.Name.Length == 0 ? info.FullName : info.Name;
         FullPath = info.FullName;
         IsDirectory = info is DirectoryInfo;
+        EffectiveExtension = IsDirectory ? string.Empty : aliases?.ResolveExtension(Name) ?? Path.GetExtension(Name).ToLowerInvariant();
         IsDotFolder = IsDirectory && Name.StartsWith(".", StringComparison.Ordinal) && Name.Length > 1;
         try
         {
@@ -47,7 +48,8 @@ public sealed class BrowserItem
     public string Name { get; }
     public string FullPath { get; }
     public bool IsDirectory { get; }
-    public bool IsZipArchive => !IsDirectory && Path.GetExtension(Name).Equals(".zip", StringComparison.OrdinalIgnoreCase);
+    public string EffectiveExtension { get; }
+    public bool IsZipArchive => !IsDirectory && EffectiveExtension.Equals(".zip", StringComparison.OrdinalIgnoreCase);
     public bool IsDotFolder { get; }
     public bool IsHidden { get; }
     public bool IsUnavailable { get; }
@@ -60,7 +62,7 @@ public sealed class BrowserItem
     {
         if (IsDirectory)
             return (MaterialIconKind.Folder, Brush.Parse("#8DBCEB"));
-        var extension = Path.GetExtension(Name).ToLowerInvariant();
+        var extension = EffectiveExtension;
         if (extension is ".zip" or ".7z" or ".rar" or ".tar" or ".gz" or ".bz2")
             return (MaterialIconKind.ZipBox, Brush.Parse("#D7A6FF"));
         if (extension is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".webp" or ".svg" or ".ico" or ".icns" or ".tif" or ".tiff")

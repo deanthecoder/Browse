@@ -34,11 +34,11 @@ public sealed class ImagePreviewProvider : IPreviewProvider
     };
 
     public ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken) =>
-        ValueTask.FromResult(!item.IsDirectory && Extensions.Contains(Path.GetExtension(item.Name)));
+        ValueTask.FromResult(!item.IsDirectory && Extensions.Contains(item.EffectiveExtension));
 
     public async Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken)
     {
-        var decoded = await Task.Run(() => Decode((FileInfo)item.Info), cancellationToken);
+        var decoded = await Task.Run(() => Decode((FileInfo)item.Info, item.EffectiveExtension), cancellationToken);
         if (cancellationToken.IsCancellationRequested)
         {
             decoded.Bitmap.Dispose();
@@ -49,14 +49,14 @@ public sealed class ImagePreviewProvider : IPreviewProvider
         return new ImagePreviewContent(item.Name, item.FullPath, details, decoded.Bitmap);
     }
 
-    private static DecodedImage Decode(FileInfo file)
+    private static DecodedImage Decode(FileInfo file, string extension)
     {
-        if (!file.Extension.Equals(".tif", StringComparison.OrdinalIgnoreCase) &&
-            !file.Extension.Equals(".tiff", StringComparison.OrdinalIgnoreCase))
+        if (!extension.Equals(".tif", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".tiff", StringComparison.OrdinalIgnoreCase))
         {
             using var stream = file.OpenRead();
             var decodedBitmap = Bitmap.DecodeToHeight(stream, MaxPreviewDimension, BitmapInterpolationMode.MediumQuality);
-            var metadata = ReadMetadata(file);
+            var metadata = ReadMetadata(file, extension);
             return new DecodedImage(
                 decodedBitmap,
                 metadata?.Width ?? decodedBitmap.PixelSize.Width,
@@ -198,7 +198,7 @@ public sealed class ImagePreviewProvider : IPreviewProvider
         return bitmap;
     }
 
-    private static ImageMetadata ReadMetadata(FileInfo file)
+    private static ImageMetadata ReadMetadata(FileInfo file, string extension)
     {
         try
         {
@@ -206,21 +206,21 @@ public sealed class ImagePreviewProvider : IPreviewProvider
             var header = new byte[32];
             if (stream.Read(header, 0, header.Length) < 30)
                 return null;
-            if (file.Extension.Equals(".png", StringComparison.OrdinalIgnoreCase))
+            if (extension.Equals(".png", StringComparison.OrdinalIgnoreCase))
             {
                 var width = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(16, 4));
                 var height = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(20, 4));
                 var channels = header[25] switch { 0 => 1, 2 => 3, 3 => 1, 4 => 2, 6 => 4, _ => 1 };
                 return new ImageMetadata(width, height, $"{channels} × {header[24]} bpp");
             }
-            if (file.Extension.Equals(".gif", StringComparison.OrdinalIgnoreCase))
+            if (extension.Equals(".gif", StringComparison.OrdinalIgnoreCase))
             {
                 return new ImageMetadata(
                     BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(6, 2)),
                     BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(8, 2)),
                     $"{(header[10] & 0x07) + 1} bpp indexed");
             }
-            if (file.Extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase))
+            if (extension.Equals(".bmp", StringComparison.OrdinalIgnoreCase))
             {
                 var bitsPerPixel = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(28, 2));
                 return new ImageMetadata(
@@ -228,8 +228,8 @@ public sealed class ImagePreviewProvider : IPreviewProvider
                     Math.Abs(BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(22, 4))),
                     bitsPerPixel is 24 or 32 ? $"{bitsPerPixel / 8} × 8 bpp" : $"{bitsPerPixel} bpp");
             }
-            if (file.Extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                file.Extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+            if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
                 return ReadJpegMetadata(stream);
         }
         catch (Exception)

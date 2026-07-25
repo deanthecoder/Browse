@@ -32,7 +32,8 @@ public sealed class DirectoryContentService
         var path = directory.FullName;
         if (!m_cache.TryGetValue(path, out var cacheEntry) || DateTime.UtcNow - cacheEntry.CreatedAt > CacheLifetime)
         {
-            var items = await Task.Run(() => Enumerate(directory, cancellationToken), cancellationToken);
+            var aliases = new FileTypeAliasMap(settings.ExtensionAliases);
+            var items = await Task.Run(() => Enumerate(directory, aliases, cancellationToken), cancellationToken);
             cacheEntry = new CacheEntry(DateTime.UtcNow, items);
             m_cache[path] = cacheEntry;
         }
@@ -44,8 +45,12 @@ public sealed class DirectoryContentService
     }
 
     public void Invalidate(DirectoryInfo directory) => m_cache.TryRemove(directory.FullName, out _);
+    public void InvalidateAll() => m_cache.Clear();
 
-    private static IReadOnlyList<BrowserItem> Enumerate(DirectoryInfo directory, CancellationToken cancellationToken)
+    private static IReadOnlyList<BrowserItem> Enumerate(
+        DirectoryInfo directory,
+        FileTypeAliasMap aliases,
+        CancellationToken cancellationToken)
     {
         var items = new List<BrowserItem>();
         try
@@ -53,7 +58,7 @@ public sealed class DirectoryContentService
             foreach (var info in directory.EnumerateFileSystemInfos())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                items.Add(new BrowserItem(info));
+                items.Add(new BrowserItem(info, aliases));
             }
         }
         catch (UnauthorizedAccessException)

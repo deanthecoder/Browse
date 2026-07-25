@@ -287,6 +287,8 @@ public partial class MainWindow : Window
     private void OnSettingsClicked(object sender, RoutedEventArgs e) => ViewModel.IsSettingsVisible = true;
     private void OnSettingsCloseClicked(object sender, RoutedEventArgs e) => ViewModel.IsSettingsVisible = false;
     private void OnResetFavoritesClicked(object sender, RoutedEventArgs e) => ViewModel.ResetFavorites();
+    private async void OnApplyExtensionAliasesClicked(object sender, RoutedEventArgs e) =>
+        await ViewModel.ApplyExtensionAliasesAsync();
     private void OnTerminalClicked(object sender, RoutedEventArgs e) => ViewModel.OpenTerminal();
     private void OnColumnTerminalClicked(object sender, RoutedEventArgs e)
     {

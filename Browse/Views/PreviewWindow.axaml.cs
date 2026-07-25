@@ -171,7 +171,7 @@ public partial class PreviewWindow : Window
         {
             var text = await ReadExpandedTextAsync(code, cancellationToken);
             var colorizer = await Task.Run(
-                () => TextMateCodeColorizer.Create(code.Path, text, SyntaxHighlightingTimeout, cancellationToken),
+                () => TextMateCodeColorizer.Create(GetSyntaxPath(code), text, SyntaxHighlightingTimeout, cancellationToken),
                 cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             return CreateCodePreview(code, text, colorizer);
@@ -214,11 +214,14 @@ public partial class PreviewWindow : Window
         CancellationToken cancellationToken)
     {
         var colorizer = await Task.Run(
-            () => TextMateCodeColorizer.Create(preview.Path, text, SyntaxHighlightingTimeout, cancellationToken),
+            () => TextMateCodeColorizer.Create(GetSyntaxPath(preview), text, SyntaxHighlightingTimeout, cancellationToken),
             cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         return CreateCodePreview(preview, text, colorizer);
     }
+
+    private static string GetSyntaxPath(TextPreviewContent preview) =>
+        string.IsNullOrWhiteSpace(preview.Language) ? preview.Path : $"file.{preview.Language.TrimStart('.')}";
 
     internal static ScrollViewer CreateHtmlPreview(string html) => new()
     {
@@ -233,7 +236,7 @@ public partial class PreviewWindow : Window
     };
 
     internal static TextEditor CreateCodePreview(TextPreviewContent code) =>
-        CreateCodePreview(code, code.Text, TextMateCodeColorizer.Create(code.Path, code.Text));
+        CreateCodePreview(code, code.Text, TextMateCodeColorizer.Create(GetSyntaxPath(code), code.Text));
 
     internal static TextEditor CreateCodePreview(TextPreviewContent code, string text, TextMateCodeColorizer colorizer)
     {

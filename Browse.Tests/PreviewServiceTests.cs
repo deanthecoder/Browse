@@ -92,8 +92,40 @@ public sealed class PreviewServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Mode, Is.EqualTo(TextPreviewMode.Markdown));
-            Assert.That(result.Language, Is.Null);
+            Assert.That(result.Language, Is.EqualTo("md"));
         });
+    }
+
+    [Test]
+    public async Task CheckAliasedSourceFileUsesTargetGrammar()
+    {
+        using var temp = new TempDirectory();
+        var path = Path.Combine(temp.FullName, "sample.slnx");
+        await File.WriteAllTextAsync(path, "<Solution />");
+        var item = new BrowserItem(new FileInfo(path), new FileTypeAliasMap([".slnx=.xml"]));
+
+        var result = (TextPreviewContent)await new PreviewService().CreateAsync([item]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Mode, Is.EqualTo(TextPreviewMode.Code));
+            Assert.That(result.Language, Is.EqualTo("xml"));
+        });
+    }
+
+    [Test]
+    public async Task CheckAliasedZipUsesArchivePreview()
+    {
+        using var temp = new TempDirectory();
+        var path = Path.Combine(temp.FullName, "sample.workzip");
+        using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
+            archive.CreateEntry("inside.txt").Open().Dispose();
+        var item = new BrowserItem(new FileInfo(path), new FileTypeAliasMap([".workzip=.zip"]));
+
+        var result = await new PreviewService().CreateAsync([item]);
+
+        Assert.That(result, Is.TypeOf<ArchivePreviewContent>());
+        Assert.That(((ArchivePreviewContent)result).Text, Does.Contain("inside.txt"));
     }
 
     [TestCase("sample.html")]

@@ -251,7 +251,8 @@
     </Border>
 
     <Border Grid.RowSpan="2" Background="#99000000" IsVisible="{Binding IsSettingsVisible}">
-      <Border Width="440" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="20" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,32">
+      <Border Width="440" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="20" HorizontalAlignment="Right" VerticalAlignment="Stretch" Margin="0,10,10,32">
+        <ScrollViewer>
         <StackPanel Spacing="14">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" />
@@ -267,9 +268,24 @@
             <TextBlock Text="New window shortcut" Classes="muted" FontSize="11" VerticalAlignment="Center" />
             <TextBlock Grid.Column="1" Text="{Binding GlobalShortcutText}" FontSize="11" VerticalAlignment="Center" />
           </Grid>
+          <StackPanel Spacing="5">
+            <TextBlock Text="File type aliases" FontWeight="SemiBold" />
+            <TextBlock Text="One per line, such as .workzip=.zip or .slnx=.xml" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+            <TextBox Text="{Binding ExtensionAliasesText}"
+                     AcceptsReturn="True"
+                     TextWrapping="NoWrap"
+                     MinHeight="76"
+                     FontFamily="Consolas"
+                     Watermark=".workzip=.zip" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+              <Button Content="Apply aliases" Click="OnApplyExtensionAliasesClicked" />
+              <TextBlock Grid.Column="1" Text="{Binding ExtensionAliasStatus}" Classes="muted" FontSize="11" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+          </StackPanel>
           <Button Content="Reset favorites" HorizontalAlignment="Left" Click="OnResetFavoritesClicked" />
           <TextBlock Text="Changes are applied immediately and saved automatically." Classes="muted" FontSize="11" TextWrapping="Wrap" />
         </StackPanel>
+        </ScrollViewer>
       </Border>
     </Border>
 
