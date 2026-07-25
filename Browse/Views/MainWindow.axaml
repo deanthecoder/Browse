@@ -81,8 +81,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:SidebarEntryViewModel">
                   <Button Tag="{Binding}" Classes="chrome" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                          Click="OnSidebarClicked" PointerPressed="OnFavoritePointerPressed"
-                          PointerMoved="OnFavoritePointerMoved" PointerReleased="OnFavoritePointerReleased">
+                          Click="OnSidebarClicked">
                     <Button.ContextMenu>
                       <ContextMenu>
                         <MenuItem Header="Open in new window..." Click="OnOpenFavoriteInNewWindowClicked" />

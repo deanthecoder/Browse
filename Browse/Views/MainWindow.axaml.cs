@@ -67,6 +67,9 @@ public partial class MainWindow : Window
         AddHandler(PointerPressedEvent, OnColumnPointerPressed, RoutingStrategies.Tunnel, true);
         AddHandler(PointerMovedEvent, OnColumnPointerMoved, RoutingStrategies.Tunnel, true);
         AddHandler(PointerReleasedEvent, OnColumnPointerReleased, RoutingStrategies.Tunnel, true);
+        AddHandler(PointerPressedEvent, OnFavoritePointerPressed, RoutingStrategies.Tunnel, true);
+        AddHandler(PointerMovedEvent, OnFavoritePointerMoved, RoutingStrategies.Tunnel, true);
+        AddHandler(PointerReleasedEvent, OnFavoritePointerReleased, RoutingStrategies.Tunnel, true);
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel, true);
         ViewModel.Columns.CollectionChanged += OnColumnsChanged;
         Deactivated += (_, _) => ClearPendingDrag();
@@ -718,7 +721,7 @@ public partial class MainWindow : Window
 
     private void OnFavoritePointerPressed(object sender, PointerPressedEventArgs e)
     {
-        if (sender is not Button { Tag: SidebarEntryViewModel entry } ||
+        if (GetFavoriteEntry(e.Source) is not { } entry ||
             e.GetCurrentPoint(this).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed)
             return;
         m_favoriteDragStart = e.GetPosition(this);
@@ -757,6 +760,15 @@ public partial class MainWindow : Window
             return;
         m_favoriteDragStart = null;
         m_draggedFavorite = null;
+    }
+
+    private SidebarEntryViewModel GetFavoriteEntry(object source)
+    {
+        if (source is not Visual visual)
+            return null;
+        var button = visual as Button ?? visual.FindAncestorOfType<Button>();
+        var entry = button?.Tag as SidebarEntryViewModel;
+        return entry != null && ViewModel.Favorites.Contains(entry) ? entry : null;
     }
 
     private void OnWindowDragOver(object sender, DragEventArgs e)
