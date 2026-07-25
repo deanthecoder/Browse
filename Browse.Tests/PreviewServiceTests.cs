@@ -96,6 +96,24 @@ public sealed class PreviewServiceTests
         });
     }
 
+    [TestCase("sample.html")]
+    [TestCase("sample.htm")]
+    public async Task CheckHtmlUsesRenderedExpandedPreview(string name)
+    {
+        using var temp = new TempDirectory();
+        var path = Path.Combine(temp.FullName, name);
+        await File.WriteAllTextAsync(path, "<h1>Heading</h1>");
+
+        var result = (TextPreviewContent)await new PreviewService().CreateAsync([new BrowserItem(new FileInfo(path))]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Mode, Is.EqualTo(TextPreviewMode.Html));
+            Assert.That(result.Text, Does.Contain("<h1>Heading</h1>"));
+            Assert.That(result.CanExpand, Is.True);
+        });
+    }
+
     [Test]
     public async Task CheckLargeTextPreviewIsBounded()
     {

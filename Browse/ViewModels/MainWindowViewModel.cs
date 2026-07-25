@@ -194,7 +194,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     public Avalonia.Media.Imaging.Bitmap PreviewImage => (Preview as ImagePreviewContent)?.Image;
-    public bool IsTextPreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Plain };
+    public bool IsTextPreview => Preview is TextPreviewContent
+    {
+        Mode: TextPreviewMode.Plain or TextPreviewMode.Html
+    };
     public bool IsCodePreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Code };
     public bool IsMarkdownPreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown };
     public bool IsArchivePreview => Preview is ArchivePreviewContent;

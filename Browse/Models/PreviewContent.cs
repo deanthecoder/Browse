@@ -63,7 +63,8 @@ public enum TextPreviewMode
 {
     Plain,
     Code,
-    Markdown
+    Markdown,
+    Html
 }
 
 /// <summary>

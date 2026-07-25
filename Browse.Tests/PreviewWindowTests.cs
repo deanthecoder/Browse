@@ -13,6 +13,7 @@ using Avalonia.Headless;
 using AvaloniaEdit;
 using Browse.Models;
 using Browse.Views;
+using TheArtOfDev.HtmlRenderer.Avalonia;
 
 namespace Browse.Tests;
 
@@ -94,6 +95,26 @@ public sealed class PreviewWindowTests
             Assert.That(colorizer, Is.Null);
             Assert.That(editor.TextArea.TextView.LineTransformers, Has.None.TypeOf<TextMateCodeColorizer>());
             Assert.That(editor.Text, Is.EqualTo(preview.Text));
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task CheckHtmlPreviewUsesRenderedPanel()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
+        await session.Dispatch(() =>
+        {
+            const string html = "<h1>Rendered heading</h1>";
+
+            var preview = PreviewWindow.CreateHtmlPreview(html);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(preview.Content, Is.TypeOf<HtmlPanel>());
+                Assert.That(((HtmlPanel)preview.Content).Text, Is.EqualTo(html));
+                Assert.That(((HtmlPanel)preview.Content).BaseStylesheet, Does.Contain("#111316"));
+            });
             return true;
         }, CancellationToken.None);
     }

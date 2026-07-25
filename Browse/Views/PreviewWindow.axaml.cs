@@ -23,6 +23,7 @@ using Browse.Services;
 using Browse.ViewModels;
 using LiveMarkdown.Avalonia;
 using TextMateSharp.Grammars;
+using TheArtOfDev.HtmlRenderer.Avalonia;
 
 namespace Browse.Views;
 
@@ -117,6 +118,11 @@ public partial class PreviewWindow : Window
             return CreateMessage("No larger preview is available for this item.");
         if (m_viewModel.Preview is ImagePreviewContent image)
             return new Image { Source = image.Image, Stretch = Stretch.Uniform };
+        if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Html } html)
+        {
+            var text = await ReadExpandedTextAsync(html, cancellationToken);
+            return CreateHtmlPreview(text);
+        }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Plain } plainText)
         {
             var text = await ReadExpandedTextAsync(plainText, cancellationToken);
@@ -169,6 +175,18 @@ public partial class PreviewWindow : Window
         }
         return CreateMessage("No larger preview is available for this item.");
     }
+
+    internal static ScrollViewer CreateHtmlPreview(string html) => new()
+    {
+        HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+        Content = new HtmlPanel
+        {
+            Text = html,
+            BaseStylesheet = "body { background: #111316; color: #d4d4d4; font-family: sans-serif; margin: 16px; } " +
+                             "a { color: #58a6ff; } pre, code { background: #1e2329; color: #d4d4d4; font-family: monospace; } " +
+                             "table { border-collapse: collapse; } th, td { border: 1px solid #49515b; padding: 4px 8px; }"
+        }
+    };
 
     internal static TextEditor CreateCodePreview(TextPreviewContent code) =>
         CreateCodePreview(code, code.Text, TextMateCodeColorizer.Create(code.Path, code.Text));

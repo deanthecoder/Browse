@@ -43,9 +43,7 @@ public sealed class TextPreviewProvider : IPreviewProvider
         var file = (FileInfo)item.Info;
         var sample = await ReadSampleAsync(file, cancellationToken);
         var language = TextMateLanguageResolver.Resolve(file.FullName);
-        var mode = file.Extension.Equals(".md", StringComparison.OrdinalIgnoreCase)
-            ? TextPreviewMode.Markdown
-            : language == null ? TextPreviewMode.Plain : TextPreviewMode.Code;
+        var mode = GetPreviewMode(file, language);
         return new TextPreviewContent(
             item.Name,
             item.FullPath,
@@ -54,6 +52,16 @@ public sealed class TextPreviewProvider : IPreviewProvider
             mode,
             mode == TextPreviewMode.Code ? language : null,
             sample.IsTruncated);
+    }
+
+    private static TextPreviewMode GetPreviewMode(FileInfo file, string language)
+    {
+        if (file.Extension.Equals(".md", StringComparison.OrdinalIgnoreCase))
+            return TextPreviewMode.Markdown;
+        if (file.Extension.Equals(".html", StringComparison.OrdinalIgnoreCase) ||
+            file.Extension.Equals(".htm", StringComparison.OrdinalIgnoreCase))
+            return TextPreviewMode.Html;
+        return language == null ? TextPreviewMode.Plain : TextPreviewMode.Code;
     }
 
     private static async Task<TextSample> ReadSampleAsync(FileInfo file, CancellationToken cancellationToken)
