@@ -32,6 +32,7 @@ namespace Browse.Views;
 public partial class MainWindow : Window
 {
     private const double ColumnWidth = 270;
+    private static readonly DataFormat<string> FavoriteDataFormat = DataFormat.CreateStringApplicationFormat("Browse.Favorite");
     private readonly string m_requestedPath;
     private Point? m_dragStart;
     private ListBox m_dragSource;
@@ -43,6 +44,11 @@ public partial class MainWindow : Window
     private bool m_suppressSelectionChanged;
     private string m_typeSearch = string.Empty;
     private DateTime m_lastTypeSearch;
+    private Point? m_favoriteDragStart;
+    private SidebarEntryViewModel m_draggedFavorite;
+    private bool m_favoriteDragOutside;
+    private bool m_favoriteDragCanceled;
+    private bool m_suppressFavoriteClick;
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext;
 
     public MainWindow() : this(new MainWindowViewModel(
@@ -76,6 +82,8 @@ public partial class MainWindow : Window
 
     private async void OnSidebarClicked(object sender, RoutedEventArgs e)
     {
+        if (m_suppressFavoriteClick)
+            return;
         if (sender is Button { Tag: SidebarEntryViewModel entry })
         {
             await ViewModel.NavigateToAsync(entry.Path);
@@ -331,6 +339,8 @@ public partial class MainWindow : Window
     private async void OnCopyBase64Clicked(object sender, RoutedEventArgs e) => await CopyGeneratedTextAsync(ViewModel.GetBase64TextAsync());
     private async void OnWindowKeyDown(object sender, KeyEventArgs e)
     {
+        if (m_draggedFavorite != null && e.Key == Key.Escape)
+            m_favoriteDragCanceled = true;
         var hasModalOverlay = ViewModel.IsGoToVisible || ViewModel.IsRenameVisible ||
                               ViewModel.IsSettingsVisible || ViewModel.IsNewFolderVisible;
         if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key is Key.Left or Key.Right)
@@ -677,12 +687,26 @@ public partial class MainWindow : Window
 
     private void OnFavoritesDragOver(object sender, DragEventArgs e)
     {
+        if (e.DataTransfer.Contains(FavoriteDataFormat))
+        {
+            m_favoriteDragOutside = false;
+            e.DragEffects = DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
         e.DragEffects = e.DataTransfer.Contains(DataFormat.File) ? DragDropEffects.Link : DragDropEffects.None;
         e.Handled = true;
     }
 
     private void OnFavoritesDrop(object sender, DragEventArgs e)
     {
+        if (e.DataTransfer.Contains(FavoriteDataFormat))
+        {
+            m_favoriteDragOutside = false;
+            e.DragEffects = DragDropEffects.Move;
+            e.Handled = true;
+            return;
+        }
         var paths = e.DataTransfer.TryGetFiles()?
             .Select(item => item.TryGetLocalPath())
             .Where(Directory.Exists)
@@ -691,6 +715,76 @@ public partial class MainWindow : Window
             ViewModel.AddFavorite(path);
         e.Handled = true;
     }
+
+    private void OnFavoritePointerPressed(object sender, PointerPressedEventArgs e)
+    {
+        if (sender is not Button { Tag: SidebarEntryViewModel entry } ||
+            e.GetCurrentPoint(this).Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonPressed)
+            return;
+        m_favoriteDragStart = e.GetPosition(this);
+        m_draggedFavorite = entry;
+    }
+
+    private async void OnFavoritePointerMoved(object sender, PointerEventArgs e)
+    {
+        if (m_favoriteDragStart == null || m_draggedFavorite == null ||
+            !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+        var position = e.GetPosition(this);
+        if (Math.Abs(position.X - m_favoriteDragStart.Value.X) < 14 &&
+            Math.Abs(position.Y - m_favoriteDragStart.Value.Y) < 14)
+            return;
+
+        var favorite = m_draggedFavorite;
+        m_favoriteDragStart = null;
+        m_favoriteDragOutside = false;
+        m_favoriteDragCanceled = false;
+        m_suppressFavoriteClick = true;
+        var transfer = new DataTransfer();
+        transfer.Add(DataTransferItem.Create(FavoriteDataFormat, favorite.Path));
+        var result = await DragDrop.DoDragDropAsync(e, transfer, DragDropEffects.Move);
+        if (ShouldRemoveFavoriteAfterDrag(result, m_favoriteDragOutside, m_favoriteDragCanceled))
+            ViewModel.RemoveFavorite(favorite);
+        m_draggedFavorite = null;
+        m_favoriteDragOutside = false;
+        m_favoriteDragCanceled = false;
+        Dispatcher.UIThread.Post(() => m_suppressFavoriteClick = false, DispatcherPriority.Background);
+    }
+
+    private void OnFavoritePointerReleased(object sender, PointerReleasedEventArgs e)
+    {
+        if (m_suppressFavoriteClick)
+            return;
+        m_favoriteDragStart = null;
+        m_draggedFavorite = null;
+    }
+
+    private void OnWindowDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.DataTransfer.Contains(FavoriteDataFormat))
+            return;
+        m_favoriteDragOutside = false;
+        e.DragEffects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    private void OnWindowDragLeave(object sender, RoutedEventArgs e)
+    {
+        if (m_draggedFavorite != null)
+            m_favoriteDragOutside = true;
+    }
+
+    private void OnWindowDrop(object sender, DragEventArgs e)
+    {
+        if (!e.DataTransfer.Contains(FavoriteDataFormat))
+            return;
+        m_favoriteDragOutside = false;
+        e.DragEffects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    internal static bool ShouldRemoveFavoriteAfterDrag(DragDropEffects result, bool outside, bool canceled) =>
+        result == DragDropEffects.None && outside && !canceled;
 
     private void OnRemoveFavoriteClicked(object sender, RoutedEventArgs e)
     {

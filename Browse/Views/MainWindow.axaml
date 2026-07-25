@@ -14,6 +14,10 @@
         Height="410"
         MinWidth="780"
         MinHeight="320"
+        DragDrop.AllowDrop="True"
+        DragDrop.DragOver="OnWindowDragOver"
+        DragDrop.DragLeave="OnWindowDragLeave"
+        DragDrop.Drop="OnWindowDrop"
         Title="Browse">
   <Window.Resources>
     <ContextMenu x:Key="ItemContextMenu">
@@ -76,7 +80,9 @@
                           DragDrop.Drop="OnFavoritesDrop">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:SidebarEntryViewModel">
-                  <Button Tag="{Binding}" Classes="chrome" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked">
+                  <Button Tag="{Binding}" Classes="chrome" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                          Click="OnSidebarClicked" PointerPressed="OnFavoritePointerPressed"
+                          PointerMoved="OnFavoritePointerMoved" PointerReleased="OnFavoritePointerReleased">
                     <Button.ContextMenu>
                       <ContextMenu>
                         <MenuItem Header="Open in new window..." Click="OnOpenFavoriteInNewWindowClicked" />
