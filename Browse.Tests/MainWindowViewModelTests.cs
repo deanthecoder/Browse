@@ -80,6 +80,27 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public void CheckColumnRefreshReplacesSelectedItemWhenAliasChanges()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "Archive.workzip"));
+        File.WriteAllText(file.FullName, "content");
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([new BrowserItem(file)]);
+        var selected = column.Items[0];
+        column.SetSelection([selected]);
+
+        column.ReplaceItems([new BrowserItem(file, new FileTypeAliasMap([".workzip=.zip"]))]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(column.Items[0], Is.Not.SameAs(selected));
+            Assert.That(column.Items[0].IsZipArchive, Is.True);
+            Assert.That(column.IsSelectedPath(column.Items[0].FullPath), Is.True);
+        });
+    }
+
+    [Test]
     public void CheckColumnRefreshCanSelectReplacementPath()
     {
         using var temp = new TempDirectory();

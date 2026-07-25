@@ -787,8 +787,17 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         Settings.ExtensionAliases = mappings;
         ExtensionAliasesText = string.Join(Environment.NewLine, mappings);
         m_settingsService.Save(Settings);
+        var selectedPaths = m_selectedItems
+            .Select(item => item.FullPath)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         m_directoryService.InvalidateAll();
         await ReloadCurrentAsync();
+        m_selectedItems.Clear();
+        m_selectedItems.AddRange(Columns
+            .SelectMany(column => column.Items)
+            .Where(item => selectedPaths.Contains(item.FullPath))
+            .DistinctBy(item => item.FullPath, StringComparer.OrdinalIgnoreCase));
+        _ = UpdatePreviewAsync();
         ExtensionAliasStatus = mappings.Length == 0
             ? "No file type aliases configured."
             : $"Applied {mappings.Length:N0} file type alias{(mappings.Length == 1 ? string.Empty : "es")}.";

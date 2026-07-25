@@ -76,6 +76,7 @@ public sealed class FolderColumnViewModel : ViewModelBase
         var existing = Items.ToDictionary(item => item.FullPath, StringComparer.OrdinalIgnoreCase);
         var desired = items
             .Select(item => existing.TryGetValue(item.FullPath, out var current) &&
+                            current.EffectiveExtension == item.EffectiveExtension &&
                             (m_selectedPaths.Contains(item.FullPath) || HasSameDisplayMetadata(current, item))
                 ? current
                 : item)
@@ -115,6 +116,7 @@ public sealed class FolderColumnViewModel : ViewModelBase
         first.IsUnavailable == second.IsUnavailable &&
         first.LastWriteTime == second.LastWriteTime &&
         first.Size == second.Size &&
+        first.EffectiveExtension == second.EffectiveExtension &&
         first.Icon == second.Icon;
 
     public bool IsSelectedPath(string path) => m_selectedPaths.Contains(path);
