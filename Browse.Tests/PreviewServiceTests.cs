@@ -116,6 +116,36 @@ public sealed class PreviewServiceTests
         });
     }
 
+    [TestCase("sample.exe", true)]
+    [TestCase("sample.dll", true)]
+    [TestCase("sample.com", false)]
+    public async Task CheckExecutablePreviewExtensions(string name, bool expected)
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, name));
+        await File.WriteAllTextAsync(file.FullName, "content");
+
+        var result = await new ExecutablePreviewProvider().CanPreviewAsync(new BrowserItem(file), CancellationToken.None);
+
+        Assert.That(result, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public async Task CheckExecutablePreviewShowsVersionMetadata()
+    {
+        var file = new FileInfo(typeof(PreviewService).Assembly.Location);
+
+        var result = await new PreviewService().CreateAsync([new BrowserItem(file)]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<TextPreviewContent>());
+            Assert.That(((TextPreviewContent)result).Text, Does.Contain("File version: 0.1.0.0"));
+            Assert.That(((TextPreviewContent)result).Text, Does.Contain("Product version: 0.1"));
+            Assert.That(((TextPreviewContent)result).Text, Does.Contain("Digital signature:"));
+        });
+    }
+
     private sealed class StubPreviewProvider(bool matches, PreviewContent content) : IPreviewProvider
     {
         public ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken) =>
