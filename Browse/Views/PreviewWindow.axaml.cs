@@ -39,6 +39,7 @@ public partial class PreviewWindow : Window
     private MainWindowViewModel m_viewModel;
     private CancellationTokenSource m_previewCancellation = new();
     private bool m_updateQueued;
+    private bool m_showSource;
 
     public PreviewWindow()
     {
@@ -57,6 +58,7 @@ public partial class PreviewWindow : Window
     private void OnOpened(object sender, EventArgs e)
     {
         PreviewHost.Content = CreateMessage("Loading preview…");
+        UpdateSourceToggle();
         QueuePreviewUpdate();
     }
 
@@ -67,6 +69,8 @@ public partial class PreviewWindow : Window
         m_viewModel = DataContext as MainWindowViewModel;
         if (m_viewModel != null)
             m_viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        m_showSource = false;
+        UpdateSourceToggle();
         if (IsVisible)
             QueuePreviewUpdate();
     }
@@ -74,7 +78,31 @@ public partial class PreviewWindow : Window
     private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainWindowViewModel.Preview))
+        {
+            m_showSource = false;
+            UpdateSourceToggle();
             QueuePreviewUpdate();
+        }
+    }
+
+    private void OnSourceToggleClicked(object sender, RoutedEventArgs e)
+    {
+        m_showSource = !m_showSource;
+        UpdateSourceToggle();
+        QueuePreviewUpdate();
+    }
+
+    private void UpdateSourceToggle()
+    {
+        if (SourceToggleButton == null)
+            return;
+        SourceToggleButton.IsVisible = m_viewModel?.Preview is TextPreviewContent
+        {
+            Mode: TextPreviewMode.Html or TextPreviewMode.Markdown
+        };
+        ShowSourceIcon.IsVisible = !m_showSource;
+        ShowRenderedIcon.IsVisible = m_showSource;
+        ToolTip.SetTip(SourceToggleButton, m_showSource ? "Show rendered preview" : "Show source");
     }
 
     private void QueuePreviewUpdate()
@@ -121,7 +149,9 @@ public partial class PreviewWindow : Window
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Html } html)
         {
             var text = await ReadExpandedTextAsync(html, cancellationToken);
-            return CreateHtmlPreview(text);
+            return m_showSource
+                ? await CreateSourcePreviewAsync(html, text, cancellationToken)
+                : CreateHtmlPreview(text);
         }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Plain } plainText)
         {
@@ -149,6 +179,8 @@ public partial class PreviewWindow : Window
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown } markdown)
         {
             var text = await ReadExpandedTextAsync(markdown, cancellationToken);
+            if (m_showSource)
+                return await CreateSourcePreviewAsync(markdown, text, cancellationToken);
             return new ScrollViewer
             {
                 Content = new MarkdownRenderer
@@ -174,6 +206,18 @@ public partial class PreviewWindow : Window
             };
         }
         return CreateMessage("No larger preview is available for this item.");
+    }
+
+    private static async Task<TextEditor> CreateSourcePreviewAsync(
+        TextPreviewContent preview,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        var colorizer = await Task.Run(
+            () => TextMateCodeColorizer.Create(preview.Path, text, SyntaxHighlightingTimeout, cancellationToken),
+            cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return CreateCodePreview(preview, text, colorizer);
     }
 
     internal static ScrollViewer CreateHtmlPreview(string html) => new()

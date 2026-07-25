@@ -161,6 +161,7 @@ public sealed class PreviewServiceTests
             Assert.That(((TextPreviewContent)result).Text, Does.Contain("File version: 0.1.0.0"));
             Assert.That(((TextPreviewContent)result).Text, Does.Contain("Product version: 0.1"));
             Assert.That(((TextPreviewContent)result).Text, Does.Contain("Digital signature:"));
+            Assert.That(result.CanExpand, Is.False);
         });
     }
 

@@ -80,13 +80,14 @@ public sealed class TextPreviewContent(
     string text,
     TextPreviewMode mode,
     string language = null,
-    bool isTruncated = false) : PreviewContent(name, path, details)
+    bool isTruncated = false,
+    bool canExpand = true) : PreviewContent(name, path, details)
 {
     public string Text { get; } = text;
     public TextPreviewMode Mode { get; } = mode;
     public string Language { get; } = language;
     public bool IsTruncated { get; } = isTruncated;
-    public override bool CanExpand => true;
+    public override bool CanExpand => canExpand;
 }
 
 /// <summary>

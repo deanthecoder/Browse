@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:icons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:vm="using:Browse.ViewModels"
         x:Class="Browse.Views.PreviewWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -16,6 +17,21 @@
         <Button Grid.Column="1" Content="Open..." Click="OnOpenClicked" />
       </Grid>
     </Border>
-    <ContentControl x:Name="PreviewHost" Grid.Row="1" Margin="16" />
+    <Grid Grid.Row="1" Margin="16">
+      <ContentControl x:Name="PreviewHost" />
+      <Button x:Name="SourceToggleButton"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Bottom"
+              ZIndex="2"
+              Classes="chrome"
+              Padding="5"
+              IsVisible="False"
+              Click="OnSourceToggleClicked">
+        <Grid>
+          <icons:MaterialIcon x:Name="ShowSourceIcon" Kind="CodeTags" Width="18" Height="18" Foreground="#FFFFFF" />
+          <icons:MaterialIcon x:Name="ShowRenderedIcon" Kind="EyeOutline" Width="18" Height="18" Foreground="#FFFFFF" IsVisible="False" />
+        </Grid>
+      </Button>
+    </Grid>
   </Grid>
 </Window>

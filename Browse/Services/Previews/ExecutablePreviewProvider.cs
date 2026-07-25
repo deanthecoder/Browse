@@ -54,7 +54,8 @@ public sealed class ExecutablePreviewProvider : IPreviewProvider
             item.FullPath,
             $"{item.Size?.ToSize() ?? "Unknown size"} · Modified {item.LastWriteTime:g}",
             string.Join('\n', lines),
-            TextPreviewMode.Plain);
+            TextPreviewMode.Plain,
+            canExpand: false);
     }, cancellationToken);
 
     private static void Add(ICollection<string> lines, string label, string value)

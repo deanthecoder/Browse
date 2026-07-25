@@ -191,8 +191,8 @@
           <TextBlock Grid.Row="1" Text="{Binding PreviewDetails}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,10" />
           <Border Grid.Row="2" Background="#121417" BorderBrush="#343941" BorderThickness="1" CornerRadius="5" Padding="10">
             <Grid>
-              <Button HorizontalAlignment="Right" VerticalAlignment="Top" ZIndex="2" Classes="chrome expandPreview" Padding="5" ToolTip.Tip="Open larger preview..." Click="OnExpandPreviewClicked" IsVisible="{Binding CanExpandPreview}">
-                <icons:MaterialIcon Kind="ArrowExpandAll" Width="18" Height="18" Foreground="#DCE3EC" />
+              <Button HorizontalAlignment="Right" VerticalAlignment="Bottom" ZIndex="2" Classes="chrome" Padding="5" ToolTip.Tip="Open larger preview..." Click="OnExpandPreviewClicked" IsVisible="{Binding CanExpandPreview}">
+                <icons:MaterialIcon Kind="ArrowExpandAll" Width="18" Height="18" Foreground="#FFFFFF" />
               </Button>
               <TextBlock Text="Select a file or folder" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasSelection}" />
               <Image Source="{Binding PreviewImage}" Stretch="Uniform" IsVisible="{Binding IsImagePreview}" />

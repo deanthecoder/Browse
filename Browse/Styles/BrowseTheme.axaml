@@ -14,12 +14,6 @@
   <Style Selector="Button.chrome:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="#353A43" />
   </Style>
-  <Style Selector="Button.expandPreview">
-    <Setter Property="Opacity" Value="0.35" />
-  </Style>
-  <Style Selector="Button.expandPreview:pointerover">
-    <Setter Property="Opacity" Value="1" />
-  </Style>
   <Style Selector="ListBox.browserList">
     <Setter Property="Background" Value="#202329" />
     <Setter Property="BorderThickness" Value="0" />
