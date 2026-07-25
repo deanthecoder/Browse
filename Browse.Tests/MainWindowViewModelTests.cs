@@ -48,6 +48,9 @@ public sealed class MainWindowViewModelTests
 
     [TestCase("  \"C:\\Program Files\\Browse\"  ", "C:\\Program Files\\Browse")]
     [TestCase("'/Users/dean/My Folder'", "/Users/dean/My Folder")]
+    [TestCase("/Users/dean/Library/Mobile\\ Documents/com\\~apple\\~CloudDocs/Backup/From\\ matrix", "/Users/dean/Library/Mobile Documents/com~apple~CloudDocs/Backup/From matrix")]
+    [TestCase("~/My\\ Folder", "~/My Folder")]
+    [TestCase("/tmp/trailing\\", "/tmp/trailing\\")]
     [TestCase("\"unmatched", "\"unmatched")]
     public void CheckPathInputRemovesMatchingQuotes(string input, string expected)
     {

@@ -467,14 +467,25 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         string.Join(' ', items.Select(item => QuoteIfNeeded(namesOnly ? item.Name : item.FullPath)));
 
     /// <summary>
-    /// Removes whitespace and one matching pair of quotes from a pasted path.
+    /// Removes whitespace, one matching pair of quotes, and POSIX shell escaping from a pasted path.
     /// </summary>
     public static string NormalizePathInput(string path)
     {
         path = path?.Trim() ?? string.Empty;
         if (path.Length >= 2 && path[0] == path[^1] && path[0] is '\'' or '"')
             path = path[1..^1];
-        return path;
+        if (!path.StartsWith('/') && !path.StartsWith("~/", StringComparison.Ordinal))
+            return path;
+
+        var result = new char[path.Length];
+        var resultLength = 0;
+        for (var i = 0; i < path.Length; i++)
+        {
+            if (path[i] == '\\' && i + 1 < path.Length)
+                i++;
+            result[resultLength++] = path[i];
+        }
+        return new string(result, 0, resultLength);
     }
 
     public string GetSelectedPaths(bool namesOnly = false) => JoinPaths(m_selectedItems, namesOnly);
