@@ -15,6 +15,7 @@ using Avalonia.Headless;
 using Browse.Models;
 using Browse.Services;
 using Browse.Services.Previews;
+using Browse.Services.Thumbnails;
 using DTC.Core;
 
 namespace Browse.Tests;
@@ -152,6 +153,22 @@ public sealed class PreviewServiceTests
         });
     }
 
+    [TestCase("sample.mp4", true)]
+    [TestCase("sample.avi", true)]
+    [TestCase("sample.mov", true)]
+    [TestCase("sample.txt", false)]
+    public async Task CheckCommonVideoExtensionsUseNativeThumbnailPreview(string name, bool expected)
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, name));
+        await File.WriteAllTextAsync(file.FullName, "content");
+        var provider = new VideoPreviewProvider(new PlatformThumbnailService(new EmptyThumbnailProvider()));
+
+        var result = await provider.CanPreviewAsync(new BrowserItem(file), CancellationToken.None);
+
+        Assert.That(result, Is.EqualTo(expected));
+    }
+
     private static void WriteSamplePdf(FileInfo file)
     {
         const string pageContent = "BT /F1 18 Tf 20 50 Td (Browse PDF preview) Tj ET";
@@ -254,5 +271,13 @@ public sealed class PreviewServiceTests
 
         public Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken) =>
             Task.FromResult(content);
+    }
+
+    private sealed class EmptyThumbnailProvider : IPlatformThumbnailProvider
+    {
+        public Task<Avalonia.Media.Imaging.Bitmap> CreateAsync(
+            FileInfo file,
+            int maximumDimension,
+            CancellationToken cancellationToken) => Task.FromResult<Avalonia.Media.Imaging.Bitmap>(null);
     }
 }

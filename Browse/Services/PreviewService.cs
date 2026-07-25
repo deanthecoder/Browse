@@ -30,6 +30,7 @@ public sealed class PreviewService
             new FolderPreviewProvider(),
             new ImagePreviewProvider(),
             new PdfPreviewProvider(),
+            new VideoPreviewProvider(),
             new ArchivePreviewProvider(),
             new ExecutablePreviewProvider(),
             new TextPreviewProvider(),
