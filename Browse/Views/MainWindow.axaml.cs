@@ -551,12 +551,16 @@ public partial class MainWindow : Window
         m_lastTypeSearch = now;
         var item = m_focusedColumn.ItemsView
             .Cast<BrowserItem>()
-            .FirstOrDefault(candidate => candidate.Name.StartsWith(m_typeSearch, StringComparison.CurrentCultureIgnoreCase));
+            .FirstOrDefault(candidate => MatchesTypedPrefix(candidate, m_typeSearch));
         if (item == null)
             return;
         m_focusedColumn.SelectedItem = item;
         m_focusedColumn.ScrollIntoView(item);
     }
+
+    internal static bool MatchesTypedPrefix(BrowserItem item, string prefix) =>
+        item.Name.StartsWith(prefix, StringComparison.CurrentCultureIgnoreCase) ||
+        (!item.IsDirectory && Path.GetExtension(item.Name).StartsWith(prefix, StringComparison.CurrentCultureIgnoreCase));
 
     private void RestoreColumnSelection(ListBox listBox, FolderColumnViewModel column)
     {

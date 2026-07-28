@@ -9,6 +9,7 @@
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
 using Avalonia.Input;
+using Browse.Models;
 using Browse.Views;
 
 namespace Browse.Tests;
@@ -22,6 +23,23 @@ namespace Browse.Tests;
 [TestFixture]
 public sealed class MainWindowTests
 {
+    [TestCase("tool.exe", ".exe", true)]
+    [TestCase("tool.exe", "too", true)]
+    [TestCase("tool.exe", ".dll", false)]
+    [TestCase("folder.exe", ".exe", false, true)]
+    public void CheckTypedNavigationIncludesFileExtension(
+        string name,
+        string prefix,
+        bool expected,
+        bool isDirectory = false)
+    {
+        FileSystemInfo info = isDirectory ? new DirectoryInfo(name) : new FileInfo(name);
+
+        var result = MainWindow.MatchesTypedPrefix(new BrowserItem(info), prefix);
+
+        Assert.That(result, Is.EqualTo(expected));
+    }
+
     [TestCase(DragDropEffects.None, true, false, true)]
     [TestCase(DragDropEffects.None, false, false, false)]
     [TestCase(DragDropEffects.None, true, true, false)]
