@@ -54,6 +54,42 @@ public sealed class FileOperationServiceTests
     }
 
     [Test]
+    public void CheckTransientFileLockIsRetried()
+    {
+        var attempts = 0;
+
+        FileOperationService.RetryFileLock(
+            () =>
+            {
+                attempts++;
+                if (attempts < 3)
+                    throw new IOException("The file is in use.", unchecked((int)0x80070020));
+            },
+            CancellationToken.None,
+            retryDelay: TimeSpan.Zero);
+
+        Assert.That(attempts, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void CheckNonLockingIoErrorIsNotRetried()
+    {
+        var attempts = 0;
+
+        Assert.That(
+            () => FileOperationService.RetryFileLock(
+                () =>
+                {
+                    attempts++;
+                    throw new IOException("Disk failure.");
+                },
+                CancellationToken.None,
+                retryDelay: TimeSpan.Zero),
+            Throws.TypeOf<IOException>());
+        Assert.That(attempts, Is.EqualTo(1));
+    }
+
+    [Test]
     public void CheckAvailablePathAddsNumberedSuffix()
     {
         using var temp = new TempDirectory();

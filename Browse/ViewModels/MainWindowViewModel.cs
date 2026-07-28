@@ -700,6 +700,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             .ToArray();
         try
         {
+            m_previewCancellation.Cancel();
+            Preview = new EmptyPreviewContent();
             StatusText = $"Moving {items.Length:N0} item(s) to the recycle bin…";
             await m_fileOperationService.MoveToTrashAsync(items);
             column?.SetSelectionPaths(replacementPath == null ? [] : [replacementPath]);

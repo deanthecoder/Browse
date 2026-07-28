@@ -26,6 +26,9 @@ namespace Browse.Services;
 public sealed class FileOperationService
 {
     private const long MaxBase64Bytes = 32 * 1024 * 1024;
+    private const int SharingViolation = 32;
+    private const int LockViolation = 33;
+    private static readonly TimeSpan FileLockRetryDelay = TimeSpan.FromMilliseconds(100);
     public Task CopyAsync(IReadOnlyList<BrowserItem> items, DirectoryInfo destination, bool move, CancellationToken cancellationToken = default) =>
         Task.Run(() =>
         {
@@ -64,9 +67,23 @@ public sealed class FileOperationService
                 if (OperatingSystem.IsWindows())
                 {
                     if (item.IsDirectory)
-                        FileSystem.DeleteDirectory(item.FullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                    {
+                        RetryFileLock(
+                            () => FileSystem.DeleteDirectory(
+                                item.FullPath,
+                                UIOption.OnlyErrorDialogs,
+                                RecycleOption.SendToRecycleBin),
+                            cancellationToken);
+                    }
                     else
-                        FileSystem.DeleteFile(item.FullPath, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                    {
+                        RetryFileLock(
+                            () => FileSystem.DeleteFile(
+                                item.FullPath,
+                                UIOption.OnlyErrorDialogs,
+                                RecycleOption.SendToRecycleBin),
+                            cancellationToken);
+                    }
                 }
                 else if (OperatingSystem.IsMacOS())
                 {
@@ -90,6 +107,36 @@ public sealed class FileOperationService
                 }
             }
         }, cancellationToken);
+
+    internal static void RetryFileLock(
+        Action action,
+        CancellationToken cancellationToken,
+        int maximumAttempts = 6,
+        TimeSpan? retryDelay = null)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maximumAttempts, 1);
+        var delay = retryDelay ?? FileLockRetryDelay;
+        for (var attempt = 1; ; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                action();
+                return;
+            }
+            catch (IOException ex) when (attempt < maximumAttempts && IsFileLock(ex))
+            {
+                if (cancellationToken.WaitHandle.WaitOne(delay))
+                    cancellationToken.ThrowIfCancellationRequested();
+            }
+        }
+    }
+
+    private static bool IsFileLock(IOException exception)
+    {
+        var errorCode = Marshal.GetHRForException(exception) & 0xffff;
+        return errorCode is SharingViolation or LockViolation;
+    }
 
     public Task RenameAsync(BrowserItem item, string newName) => Task.Run(() =>
     {
