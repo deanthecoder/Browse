@@ -20,6 +20,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using Browse.Models;
 using Browse.Services;
+using Browse.Services.Previews;
 using Browse.ViewModels;
 using LiveMarkdown.Avalonia;
 using TextMateSharp.Grammars;
@@ -146,6 +147,24 @@ public partial class PreviewWindow : Window
             return CreateMessage("No larger preview is available for this item.");
         if (m_viewModel.Preview is ImagePreviewContent image)
             return new Image { Source = image.Image, Stretch = Stretch.Uniform };
+        if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Hex } hex)
+        {
+            var text = await BinaryPreviewProvider.ReadHexDumpAsync(
+                new FileInfo(hex.Path),
+                BinaryPreviewProvider.MaxExpandedPreviewBytes,
+                cancellationToken);
+            return new TextEditor
+            {
+                Document = new TextDocument(text),
+                IsReadOnly = true,
+                WordWrap = false,
+                ShowLineNumbers = false,
+                FontFamily = new FontFamily("Cascadia Code,Consolas,Menlo,Monospace"),
+                FontSize = 13,
+                Background = Brush.Parse("#1E1E1E"),
+                Foreground = Brush.Parse("#D4D4D4")
+            };
+        }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Html } html)
         {
             var text = await ReadExpandedTextAsync(html, cancellationToken);

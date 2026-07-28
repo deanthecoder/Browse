@@ -248,6 +248,29 @@ public sealed class PreviewServiceTests
         });
     }
 
+    [Test]
+    public async Task CheckBinaryFileUsesConventionalHexPreview()
+    {
+        using var temp = new TempDirectory();
+        var path = Path.Combine(temp.FullName, "sample.bin");
+        await File.WriteAllBytesAsync(path,
+        [
+            0x00, 0x01, 0x20, 0x41, 0x42, 0x7e, 0x7f, 0xff,
+            0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37
+        ]);
+
+        var result = (TextPreviewContent)await new PreviewService().CreateAsync(
+            [new BrowserItem(new FileInfo(path))]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Mode, Is.EqualTo(TextPreviewMode.Hex));
+            Assert.That(result.Text, Does.StartWith("00000000  00 01 20 41 42 7E 7F FF  30 31 32 33 34 35 36 37"));
+            Assert.That(result.Text, Does.EndWith("|.. AB~..01234567|"));
+            Assert.That(result.CanExpand, Is.True);
+        });
+    }
+
     [TestCase("sample.exe", true)]
     [TestCase("sample.dll", true)]
     [TestCase("sample.com", false)]

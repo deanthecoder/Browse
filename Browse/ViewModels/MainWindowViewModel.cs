@@ -231,7 +231,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         Mode: TextPreviewMode.Plain or TextPreviewMode.Html
     };
-    public bool IsCodePreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Code };
+    public bool IsCodePreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Code or TextPreviewMode.Hex };
     public bool IsMarkdownPreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown };
     public bool IsArchivePreview => Preview is ArchivePreviewContent;
     public bool IsImagePreview => Preview is ImagePreviewContent;

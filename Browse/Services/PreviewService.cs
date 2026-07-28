@@ -34,6 +34,7 @@ public sealed class PreviewService
             new ArchivePreviewProvider(),
             new ExecutablePreviewProvider(),
             new TextPreviewProvider(),
+            new BinaryPreviewProvider(),
             new FallbackPreviewProvider()
         ];
     }
