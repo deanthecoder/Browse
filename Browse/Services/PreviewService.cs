@@ -51,7 +51,7 @@ public sealed class PreviewService
                 $"{folderCount:N0} folders · {fileCount:N0} files");
         }
 
-        var item = items[0];
+        var item = items[0].Refresh();
         foreach (var provider in m_providers)
         {
             if (await provider.CanPreviewAsync(item, cancellationToken))

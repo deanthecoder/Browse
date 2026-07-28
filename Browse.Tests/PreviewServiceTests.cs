@@ -41,6 +41,21 @@ public sealed class PreviewServiceTests
     }
 
     [Test]
+    public async Task CheckFileMetadataIsRefreshedBeforePreviewCreation()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "changing.bin"));
+        await File.WriteAllTextAsync(file.FullName, "old");
+        var staleItem = new BrowserItem(file);
+        await File.WriteAllTextAsync(file.FullName, "new, longer content");
+        var provider = new MetadataPreviewProvider();
+
+        await new PreviewService([provider]).CreateAsync([staleItem]);
+
+        Assert.That(provider.Item.Size, Is.EqualTo(new FileInfo(file.FullName).Length));
+    }
+
+    [Test]
     public async Task CheckZipPreviewListsArchiveContents()
     {
         using var temp = new TempDirectory();
@@ -279,5 +294,19 @@ public sealed class PreviewServiceTests
             FileInfo file,
             int maximumDimension,
             CancellationToken cancellationToken) => Task.FromResult<Avalonia.Media.Imaging.Bitmap>(null);
+    }
+
+    private sealed class MetadataPreviewProvider : IPreviewProvider
+    {
+        public BrowserItem Item { get; private set; }
+
+        public ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken)
+        {
+            Item = item;
+            return ValueTask.FromResult(true);
+        }
+
+        public Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken) =>
+            Task.FromResult<PreviewContent>(new EmptyPreviewContent());
     }
 }

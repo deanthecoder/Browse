@@ -21,8 +21,11 @@ using Material.Icons;
 /// </remarks>
 public sealed class BrowserItem
 {
+    private readonly FileTypeAliasMap m_aliases;
+
     public BrowserItem(FileSystemInfo info, FileTypeAliasMap aliases = null)
     {
+        m_aliases = aliases;
         Info = info;
         Name = info.Name.Length == 0 ? info.FullName : info.Name;
         FullPath = info.FullName;
@@ -57,6 +60,10 @@ public sealed class BrowserItem
     public long? Size { get; }
     public MaterialIconKind Icon { get; }
     public IBrush IconBrush { get; }
+
+    internal BrowserItem Refresh() => new(
+        IsDirectory ? new DirectoryInfo(FullPath) : new FileInfo(FullPath),
+        m_aliases);
 
     private (MaterialIconKind Icon, IBrush Brush) GetIcon()
     {
