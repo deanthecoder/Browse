@@ -5,6 +5,8 @@
 
 Browse is a fast, dark, column-based file browser for Windows and macOS. It takes the navigation model of macOS Finder and combines it with familiar Windows behaviors such as F2 rename, Explorer drag-and-drop, UNC paths, and Windows context-menu integration.
 
+![Browse showing Finder-style columns and an image preview](docs/images/browse-column-view.png)
+
 ## Current MVP
 
 - Favorites and drives in a fixed sidebar.
