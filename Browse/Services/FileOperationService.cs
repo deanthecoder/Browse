@@ -168,11 +168,37 @@ public sealed class FileOperationService
             }
         }, cancellationToken);
 
-    public Task<FileSystemInfo> ExpandZipAsync(FileInfo source, CancellationToken cancellationToken = default) =>
+    public Task<FileSystemInfo> ExpandZipAsync(
+        FileInfo source,
+        IProgress<int> progress = null,
+        CancellationToken cancellationToken = default) =>
         Task.Run<FileSystemInfo>(() =>
         {
             using var archive = ZipFile.OpenRead(source.FullName);
             var files = archive.Entries.Where(entry => !string.IsNullOrEmpty(entry.Name)).ToArray();
+            var totalBytes = files.Aggregate(0L, (total, entry) =>
+                total > long.MaxValue - entry.Length ? long.MaxValue : total + entry.Length);
+            long completedBytes = 0;
+            var lastPercentage = 0;
+            progress?.Report(lastPercentage);
+            void ReportBytes(int byteCount)
+            {
+                completedBytes = completedBytes > long.MaxValue - byteCount
+                    ? long.MaxValue
+                    : completedBytes + byteCount;
+                if (totalBytes <= 0)
+                    return;
+                var percentage = (int)Math.Min(100, completedBytes * 100.0 / totalBytes);
+                if (percentage <= lastPercentage)
+                    return;
+                lastPercentage = percentage;
+                progress?.Report(percentage);
+            }
+            void CompleteProgress()
+            {
+                if (lastPercentage < 100)
+                    progress?.Report(100);
+            }
             var parent = source.Directory ?? throw new IOException("The archive has no parent folder.");
             if (files.Length == 1)
             {
@@ -182,7 +208,8 @@ public sealed class FileOperationService
                 var output = new FileInfo(GetAvailablePath(Path.Combine(parent.FullName, fileName)));
                 try
                 {
-                    ExtractFile(files[0], output, cancellationToken);
+                    ExtractFile(files[0], output, cancellationToken, ReportBytes);
+                    CompleteProgress();
                     return output;
                 }
                 catch
@@ -208,8 +235,9 @@ public sealed class FileOperationService
                     }
                     var output = new FileInfo(outputPath);
                     output.Directory?.Create();
-                    ExtractFile(entry, output, cancellationToken);
+                    ExtractFile(entry, output, cancellationToken, ReportBytes);
                 }
+                CompleteProgress();
                 return destination;
             }
             catch
@@ -396,7 +424,11 @@ public sealed class FileOperationService
     private static string NormalizeArchivePath(string path) =>
         path.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
 
-    private static void ExtractFile(ZipArchiveEntry entry, FileInfo output, CancellationToken cancellationToken)
+    private static void ExtractFile(
+        ZipArchiveEntry entry,
+        FileInfo output,
+        CancellationToken cancellationToken,
+        Action<int> reportBytes = null)
     {
         using var input = entry.Open();
         using var destination = new FileStream(output.FullName, FileMode.CreateNew, FileAccess.Write, FileShare.None);
@@ -406,6 +438,7 @@ public sealed class FileOperationService
         {
             cancellationToken.ThrowIfCancellationRequested();
             destination.Write(buffer, 0, bytesRead);
+            reportBytes?.Invoke(bytesRead);
         }
     }
 

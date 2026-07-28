@@ -160,6 +160,29 @@ public sealed class FileOperationServiceTests
     }
 
     [Test]
+    public async Task CheckArchiveExpansionReportsByteProgress()
+    {
+        using var temp = new TempDirectory();
+        var zip = new FileInfo(Path.Combine(temp.FullName, "Archive.zip"));
+        using (var archive = ZipFile.Open(zip.FullName, ZipArchiveMode.Create))
+        {
+            var entry = archive.CreateEntry("content.bin", CompressionLevel.NoCompression);
+            await using var output = entry.Open();
+            await output.WriteAsync(new byte[256 * 1024]);
+        }
+        var progress = new RecordingProgress();
+
+        await new FileOperationService().ExpandZipAsync(zip, progress);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(progress.Percentages.First(), Is.EqualTo(0));
+            Assert.That(progress.Percentages, Has.Some.InRange(1, 99));
+            Assert.That(progress.Percentages.Last(), Is.EqualTo(100));
+        });
+    }
+
+    [Test]
     public void CheckUnsafeArchivePathIsRejected()
     {
         using var temp = new TempDirectory();
@@ -175,5 +198,12 @@ public sealed class FileOperationServiceTests
             Throws.TypeOf<InvalidDataException>());
         Assert.That(File.Exists(Path.Combine(temp.FullName, "outside.txt")), Is.False);
         Assert.That(Directory.Exists(Path.Combine(temp.FullName, "Archive")), Is.False);
+    }
+
+    private sealed class RecordingProgress : IProgress<int>
+    {
+        public List<int> Percentages { get; } = [];
+
+        public void Report(int value) => Percentages.Add(value);
     }
 }

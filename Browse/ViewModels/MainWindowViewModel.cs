@@ -696,7 +696,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         try
         {
             StatusText = $"Expanding {selectedItem.Name}…";
-            var output = await m_fileOperationService.ExpandZipAsync(new FileInfo(selectedItem.FullPath));
+            var progress = new Progress<int>(percentage =>
+                StatusText = $"Expanding {selectedItem.Name}… {percentage:N0}%");
+            var output = await m_fileOperationService.ExpandZipAsync(new FileInfo(selectedItem.FullPath), progress);
             column?.SetSelectionPaths([output.FullName]);
             m_directoryService.Invalidate(parent);
             await ReloadCurrentAsync();
