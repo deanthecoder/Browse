@@ -44,6 +44,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private bool m_isGoToVisible;
     private bool m_isSettingsVisible;
     private string m_goToPath;
+    private string m_goToError;
     private string m_extensionAliasesText;
     private string m_extensionAliasStatus;
     private string m_currentPath;
@@ -102,7 +103,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public string GoToPath
     {
         get => m_goToPath;
-        set => SetField(ref m_goToPath, value);
+        set
+        {
+            if (!SetField(ref m_goToPath, value))
+                return;
+            GoToError = null;
+        }
+    }
+
+    public string GoToError
+    {
+        get => m_goToError;
+        private set => SetField(ref m_goToError, value);
     }
 
     public bool IsSettingsVisible
@@ -304,7 +316,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         await NavigateToAsync(path);
     }
 
-    public async Task NavigateToAsync(string path)
+    public async Task<bool> NavigateToAsync(string path)
     {
         try
         {
@@ -313,14 +325,14 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
         {
             StatusText = "The path is not valid.";
-            return;
+            return false;
         }
         if (File.Exists(path))
             path = Path.GetDirectoryName(path);
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
         {
             StatusText = "Path not found or unavailable.";
-            return;
+            return false;
         }
 
         m_navigationCancellation.Cancel();
@@ -336,6 +348,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         Settings.DefaultPath = CurrentPath;
         m_settingsService.Save(Settings);
         await AddColumnAsync(directory, m_navigationCancellation.Token);
+        return true;
     }
 
     public async Task<bool> NavigateToParentAsync()
@@ -404,13 +417,21 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public void ShowGoTo()
     {
         GoToPath = CurrentPath;
+        GoToError = null;
         IsGoToVisible = true;
     }
 
-    public async Task SubmitGoToAsync()
+    public async Task<bool> SubmitGoToAsync()
     {
+        var previousStatus = StatusText;
+        if (!await NavigateToAsync(GoToPath))
+        {
+            GoToError = StatusText;
+            StatusText = previousStatus;
+            return false;
+        }
         IsGoToVisible = false;
-        await NavigateToAsync(GoToPath);
+        return true;
     }
 
     public void CopySelection(bool cut)

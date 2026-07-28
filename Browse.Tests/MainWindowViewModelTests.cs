@@ -80,6 +80,33 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public async Task CheckInvalidGoToLeavesBrowserStateUnchanged()
+    {
+        using var temp = new TempDirectory();
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(),
+            new PreviewService(),
+            new FileOperationService(),
+            new SettingsService());
+        var column = new FolderColumnViewModel(temp);
+        viewModel.Columns.Add(column);
+        viewModel.ShowGoTo();
+        viewModel.GoToPath = Path.Combine(temp.FullName, "missing");
+        var status = viewModel.StatusText;
+
+        var result = await viewModel.SubmitGoToAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.False);
+            Assert.That(viewModel.IsGoToVisible, Is.True);
+            Assert.That(viewModel.GoToError, Is.EqualTo("Path not found or unavailable."));
+            Assert.That(viewModel.StatusText, Is.EqualTo(status));
+            Assert.That(viewModel.Columns, Is.EqualTo(new[] { column }));
+        });
+    }
+
+    [Test]
     public void CheckColumnRefreshReplacesSelectedItemWhenAliasChanges()
     {
         using var temp = new TempDirectory();

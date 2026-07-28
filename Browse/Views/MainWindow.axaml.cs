@@ -581,8 +581,10 @@ public partial class MainWindow : Window
     {
         if (e.Key == Key.Enter)
         {
-            await ViewModel.SubmitGoToAsync();
-            FocusFirstColumnItem();
+            if (await ViewModel.SubmitGoToAsync())
+                FocusFirstColumnItem();
+            else
+                GoToTextBox.Focus();
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)

@@ -235,6 +235,7 @@
         <StackPanel Spacing="10">
           <TextBlock Text="Go to path" FontSize="17" FontWeight="SemiBold" />
           <TextBox x:Name="GoToTextBox" Text="{Binding GoToPath}" Watermark="Path or UNC location" KeyDown="OnGoToKeyDown" />
+          <TextBlock Text="{Binding GoToError}" Foreground="#FF7B72" FontSize="11" IsVisible="{Binding GoToError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           <TextBlock Text="Enter to open · Escape to cancel" Classes="muted" FontSize="11" />
         </StackPanel>
       </Border>
