@@ -85,8 +85,14 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public string CurrentPath
     {
         get => m_currentPath;
-        private set => SetField(ref m_currentPath, value);
+        private set
+        {
+            if (SetField(ref m_currentPath, value))
+                OnPropertyChanged(nameof(WindowTitle));
+        }
     }
+
+    public string WindowTitle => string.IsNullOrWhiteSpace(CurrentPath) ? "Browse" : $"Browse — {CurrentPath}";
 
     public string StatusText
     {

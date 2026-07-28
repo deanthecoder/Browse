@@ -18,7 +18,7 @@
         DragDrop.DragOver="OnWindowDragOver"
         DragDrop.DragLeave="OnWindowDragLeave"
         DragDrop.Drop="OnWindowDrop"
-        Title="Browse">
+        Title="{Binding WindowTitle}">
   <Window.Resources>
     <ContextMenu x:Key="ItemContextMenu">
       <MenuItem Header="Open" Click="OnOpenClicked" IsVisible="{Binding !IsDirectory}" />

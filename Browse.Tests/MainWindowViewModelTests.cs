@@ -80,6 +80,23 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public void CheckWindowTitleIncludesActiveFullPath()
+    {
+        using var temp = new TempDirectory();
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(),
+            new PreviewService(),
+            new FileOperationService(),
+            new SettingsService());
+        var column = new FolderColumnViewModel(temp);
+        viewModel.Columns.Add(column);
+
+        viewModel.ActivateColumn(column);
+
+        Assert.That(viewModel.WindowTitle, Is.EqualTo($"Browse — {temp.FullName}"));
+    }
+
+    [Test]
     public async Task CheckInvalidGoToLeavesBrowserStateUnchanged()
     {
         using var temp = new TempDirectory();
