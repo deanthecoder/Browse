@@ -9,6 +9,7 @@
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
 using System.Runtime.InteropServices;
+using Avalonia;
 using Avalonia.Controls;
 
 namespace Browse.Services;
@@ -27,6 +28,9 @@ public sealed class WindowsGlobalHotKeyHost : Window
     private const uint ModControl = 0x0002;
     private const uint ModNoRepeat = 0x4000;
     private const uint VkB = 0x42;
+    private const int GwlExStyle = -20;
+    private const nint WsExAppWindow = 0x00040000;
+    private const nint WsExToolWindow = 0x00000080;
     private readonly Action m_callback;
     private nint m_handle;
     private Win32Properties.CustomWndProcHookCallback m_hook;
@@ -40,6 +44,8 @@ public sealed class WindowsGlobalHotKeyHost : Window
         ShowInTaskbar = false;
         CanResize = false;
         SystemDecorations = SystemDecorations.None;
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Position = new PixelPoint(-32000, -32000);
         Opened += OnOpened;
         Closed += OnClosed;
     }
@@ -51,6 +57,7 @@ public sealed class WindowsGlobalHotKeyHost : Window
         m_handle = TryGetPlatformHandle()?.Handle ?? 0;
         if (m_handle == 0)
             return;
+        HideFromAltTab(m_handle);
         m_hook = WndProc;
         Win32Properties.AddWndProcHookCallback(this, m_hook);
         IsRegistered = RegisterHotKey(m_handle, HotKeyId, ModControl | ModAlt | ModNoRepeat, VkB);
@@ -74,6 +81,15 @@ public sealed class WindowsGlobalHotKeyHost : Window
             Win32Properties.RemoveWndProcHookCallback(this, m_hook);
     }
 
+    private static void HideFromAltTab(nint handle)
+    {
+        var style = GetWindowLongPtr(handle, GwlExStyle);
+        SetWindowLongPtr(handle, GwlExStyle, GetAltTabHiddenStyle(style));
+    }
+
+    internal static nint GetAltTabHiddenStyle(nint style) =>
+        style & ~WsExAppWindow | WsExToolWindow;
+
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool RegisterHotKey(nint windowHandle, int id, uint modifiers, uint virtualKey);
@@ -81,4 +97,10 @@ public sealed class WindowsGlobalHotKeyHost : Window
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool UnregisterHotKey(nint windowHandle, int id);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    private static extern nint GetWindowLongPtr(nint windowHandle, int index);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+    private static extern nint SetWindowLongPtr(nint windowHandle, int index, nint newStyle);
 }

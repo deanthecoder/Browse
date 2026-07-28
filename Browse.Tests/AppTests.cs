@@ -9,6 +9,7 @@
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
 using Avalonia;
+using Browse.Services;
 
 namespace Browse.Tests;
 
@@ -41,5 +42,20 @@ public sealed class AppTests
             new PixelSize(600, 300));
 
         Assert.That(position, Is.EqualTo(new PixelPoint(600, 500)));
+    }
+
+    [Test]
+    public void CheckGlobalHotKeyHostUsesAltTabHiddenWindowStyle()
+    {
+        const nint appWindow = 0x00040000;
+        const nint toolWindow = 0x00000080;
+
+        var style = WindowsGlobalHotKeyHost.GetAltTabHiddenStyle(appWindow);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(style & appWindow, Is.EqualTo((nint)0));
+            Assert.That(style & toolWindow, Is.EqualTo(toolWindow));
+        });
     }
 }
