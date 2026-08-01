@@ -155,6 +155,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    public bool GroupByDateModified
+    {
+        get => Settings.GroupByDateModified;
+        set
+        {
+            if (Settings.GroupByDateModified == value)
+                return;
+            Settings.GroupByDateModified = value;
+            OnPropertyChanged();
+            SaveSettingsAndReload();
+        }
+    }
+
     public string ExtensionAliasesText
     {
         get => m_extensionAliasesText;
@@ -865,7 +878,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         try
         {
             var items = await m_directoryService.GetItemsAsync(column.Directory, Settings, cancellationToken);
-            column.ReplaceItems(items);
+            column.ReplaceItems(DateModifiedGrouping.Apply(items, GroupByDateModified, DateTime.Now));
         }
         catch (OperationCanceledException)
         {

@@ -23,9 +23,10 @@ public sealed class BrowserItem
 {
     private readonly FileTypeAliasMap m_aliases;
 
-    public BrowserItem(FileSystemInfo info, FileTypeAliasMap aliases = null)
+    public BrowserItem(FileSystemInfo info, FileTypeAliasMap aliases = null, string groupHeading = null)
     {
         m_aliases = aliases;
+        GroupHeading = groupHeading;
         Info = info;
         Name = info.Name.Length == 0 ? info.FullName : info.Name;
         FullPath = info.FullName;
@@ -60,10 +61,16 @@ public sealed class BrowserItem
     public long? Size { get; }
     public MaterialIconKind Icon { get; }
     public IBrush IconBrush { get; }
+    public string GroupHeading { get; }
 
     internal BrowserItem Refresh() => new(
         IsDirectory ? new DirectoryInfo(FullPath) : new FileInfo(FullPath),
         m_aliases);
+
+    internal BrowserItem WithGroupHeading(string heading) => new(
+        IsDirectory ? new DirectoryInfo(FullPath) : new FileInfo(FullPath),
+        m_aliases,
+        heading);
 
     private (MaterialIconKind Icon, IBrush Brush) GetIcon()
     {

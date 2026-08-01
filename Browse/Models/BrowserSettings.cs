@@ -32,6 +32,12 @@ public sealed class BrowserSettings : UserSettingsBase
         set => Set(value);
     }
 
+    public bool GroupByDateModified
+    {
+        get => Get<bool>();
+        set => Set(value);
+    }
+
     public string DefaultPath
     {
         get => Get<string>();
@@ -78,6 +84,7 @@ public sealed class BrowserSettings : UserSettingsBase
     {
         DefaultPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         EnableGlobalShortcut = true;
+        GroupByDateModified = true;
         WindowWidth = 1035;
         WindowHeight = 410;
     }

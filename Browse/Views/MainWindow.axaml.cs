@@ -192,12 +192,21 @@ public partial class MainWindow : Window
             {
                 m_contextDestination = ((FolderColumnViewModel)listBox.DataContext).Directory;
                 m_pendingContextMenu = (ContextMenu)Resources["ColumnContextMenu"];
+                m_pendingContextMenu.DataContext = ViewModel;
             }
             e.Handled = true;
             return;
         }
         if (updateKind != PointerUpdateKind.LeftButtonPressed || itemContainer == null)
             return;
+        if (source.GetSelfAndVisualAncestors()
+            .OfType<Border>()
+            .Any(border => border.Classes.Contains("dateGroupHeader")))
+        {
+            SetFocusedColumn(listBox);
+            e.Handled = true;
+            return;
+        }
         var extendsSelection = e.KeyModifiers.HasFlag(KeyModifiers.Control) ||
                                e.KeyModifiers.HasFlag(KeyModifiers.Meta) ||
                                e.KeyModifiers.HasFlag(KeyModifiers.Shift);

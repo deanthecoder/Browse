@@ -10,7 +10,7 @@ Browse is a fast, dark, column-based file browser for Windows and macOS. It take
 ## Current MVP
 
 - Favorites and drives in a fixed sidebar.
-- Finder-style folder columns with horizontal scrolling and alphabetical file/folder sorting.
+- Finder-style folder columns with horizontal scrolling, mixed file/folder sorting, and optional modified-date grouping.
 - Fixed Info panel with bounded image previews (including TIFF), text, binary hex, and ZIP-content previews, plus a larger preview window.
 - Markdown rendering in the larger preview window and syntax highlighting for common source-file formats.
 - `Ctrl+G` path navigation (`Command+G` on macOS), including UNC locations.

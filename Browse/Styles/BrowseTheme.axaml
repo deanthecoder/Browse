@@ -19,14 +19,17 @@
     <Setter Property="BorderThickness" Value="0" />
   </Style>
   <Style Selector="ListBox.browserList ListBoxItem">
-    <Setter Property="Padding" Value="7,5" />
+    <Setter Property="Padding" Value="0" />
     <Setter Property="MinHeight" Value="30" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
   <Style Selector="ListBox.browserList ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.browserList ListBoxItem:selected Border.browserItemRow">
     <Setter Property="Background" Value="#414750" />
   </Style>
-  <Style Selector="ListBox.browserList.activeColumn ListBoxItem:selected /template/ ContentPresenter">
+  <Style Selector="ListBox.browserList.activeColumn ListBoxItem:selected Border.browserItemRow">
     <Setter Property="Background" Value="#245F9E" />
   </Style>
   <Style Selector="Grid.folderDropTarget">

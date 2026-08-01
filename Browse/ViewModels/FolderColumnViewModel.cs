@@ -77,6 +77,7 @@ public sealed class FolderColumnViewModel : ViewModelBase
         var desired = items
             .Select(item => existing.TryGetValue(item.FullPath, out var current) &&
                             current.EffectiveExtension == item.EffectiveExtension &&
+                            current.GroupHeading == item.GroupHeading &&
                             (m_selectedPaths.Contains(item.FullPath) || HasSameDisplayMetadata(current, item))
                 ? current
                 : item)

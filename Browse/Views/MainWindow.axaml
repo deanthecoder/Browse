@@ -61,6 +61,10 @@
       <MenuItem Header="Paste" Click="OnPasteClicked" />
       <Separator />
       <MenuItem Header="Open terminal here" Click="OnColumnTerminalClicked" />
+      <Separator />
+      <MenuItem Header="Group by date modified"
+                ToggleType="CheckBox"
+                IsChecked="{Binding GroupByDateModified, Mode=TwoWay}" />
     </ContextMenu>
   </Window.Resources>
 
@@ -149,18 +153,30 @@
                              DoubleTapped="OnItemDoubleTapped">
                       <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="models:BrowserItem">
-                          <Grid ColumnDefinitions="22,*,Auto"
-                                ColumnSpacing="6"
-                                Tag="{Binding}"
-                                Background="Transparent"
-                                DragDrop.AllowDrop="True"
-                                DragDrop.DragOver="OnItemDragOver"
-                                DragDrop.DragLeave="OnItemDragLeave"
-                                DragDrop.Drop="OnItemDrop">
-                            <icons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="18" Height="18" Foreground="{Binding IconBrush}" />
-                            <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="2" Text="›" FontSize="18" Classes="muted" IsVisible="{Binding IsDirectory}" />
-                          </Grid>
+                          <StackPanel>
+                            <Border Classes="dateGroupHeader"
+                                    BorderBrush="#4A505A"
+                                    BorderThickness="0,0,0,1"
+                                    Margin="7,8,7,3"
+                                    Padding="0,0,0,3"
+                                    IsVisible="{Binding GroupHeading, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                              <TextBlock Text="{Binding GroupHeading}" Classes="muted" FontSize="10" FontWeight="SemiBold" />
+                            </Border>
+                            <Border Classes="browserItemRow" Padding="7,5">
+                              <Grid ColumnDefinitions="22,*,Auto"
+                                    ColumnSpacing="6"
+                                    Tag="{Binding}"
+                                    Background="Transparent"
+                                    DragDrop.AllowDrop="True"
+                                    DragDrop.DragOver="OnItemDragOver"
+                                    DragDrop.DragLeave="OnItemDragLeave"
+                                    DragDrop.Drop="OnItemDrop">
+                                <icons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="18" Height="18" Foreground="{Binding IconBrush}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="›" FontSize="18" Classes="muted" IsVisible="{Binding IsDirectory}" />
+                              </Grid>
+                            </Border>
+                          </StackPanel>
                         </DataTemplate>
                       </ListBox.ItemTemplate>
                     </ListBox>
