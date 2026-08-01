@@ -49,6 +49,7 @@ public partial class MainWindow : Window
     private bool m_favoriteDragOutside;
     private bool m_favoriteDragCanceled;
     private bool m_suppressFavoriteClick;
+    private Button m_focusedFavorite;
     private PreviewWindow m_previewWindow;
     private MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext;
 
@@ -93,6 +94,12 @@ public partial class MainWindow : Window
             await ViewModel.NavigateToAsync(entry.Path);
             FocusFirstColumnItem();
         }
+    }
+
+    private void OnFavoriteGotFocus(object sender, GotFocusEventArgs e)
+    {
+        if (sender is Button { Tag: SidebarEntryViewModel entry } button && ViewModel.Favorites.Contains(entry))
+            SetFocusedFavorite(button);
     }
 
     private async void OnColumnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -370,6 +377,38 @@ public partial class MainWindow : Window
             m_favoriteDragCanceled = true;
         var hasModalOverlay = ViewModel.IsGoToVisible || ViewModel.IsRenameVisible ||
                               ViewModel.IsSettingsVisible || ViewModel.IsNewFolderVisible;
+        if (!hasModalOverlay && m_focusedFavorite != null && e.KeyModifiers == KeyModifiers.None)
+        {
+            if (e.Key is Key.Up or Key.Down)
+            {
+                MoveFavoriteFocus(e.Key == Key.Up ? -1 : 1);
+                e.Handled = true;
+                return;
+            }
+            if (e.Key is Key.Home or Key.End)
+            {
+                FocusFavoriteAt(e.Key == Key.Home ? 0 : int.MaxValue);
+                e.Handled = true;
+                return;
+            }
+            if (e.Key is Key.Right or Key.Enter)
+            {
+                await NavigateToFocusedFavoriteAsync();
+                e.Handled = true;
+                return;
+            }
+            if (e.Key == Key.Left)
+            {
+                e.Handled = true;
+                return;
+            }
+            if (e.KeySymbol is { Length: 1 } favoriteSymbol && !char.IsControl(favoriteSymbol[0]))
+            {
+                SelectFavoriteByTypedPrefix(favoriteSymbol);
+                e.Handled = true;
+                return;
+            }
+        }
         if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key is Key.Left or Key.Right)
         {
             await MoveColumnFocusAsync(e.Key == Key.Left ? -1 : 1);
@@ -452,6 +491,8 @@ public partial class MainWindow : Window
         {
             if (await ViewModel.NavigateToParentAsync())
                 FocusFirstColumnItem();
+            else
+                FocusFavorites();
             return;
         }
         if (targetIndex >= ViewModel.Columns.Count)
@@ -488,6 +529,61 @@ public partial class MainWindow : Window
             if (firstList.SelectedItem != null)
                 firstList.ScrollIntoView(firstList.SelectedItem);
         }, DispatcherPriority.Background);
+    }
+
+    private void FocusFavorites()
+    {
+        Dispatcher.UIThread.Post(() => FocusFavoriteAt(0), DispatcherPriority.Background);
+    }
+
+    private Button[] GetFavoriteButtons() => FavoritesItemsControl
+        .GetVisualDescendants()
+        .OfType<Button>()
+        .Where(button => button.Tag is SidebarEntryViewModel entry && ViewModel.Favorites.Contains(entry))
+        .ToArray();
+
+    private void FocusFavoriteAt(int index)
+    {
+        var buttons = GetFavoriteButtons();
+        if (buttons.Length == 0)
+            return;
+        var target = buttons[Math.Clamp(index, 0, buttons.Length - 1)];
+        SetFocusedFavorite(target);
+        target.Focus();
+    }
+
+    private void MoveFavoriteFocus(int direction)
+    {
+        var buttons = GetFavoriteButtons();
+        if (buttons.Length == 0)
+            return;
+        var currentIndex = Array.IndexOf(buttons, m_focusedFavorite);
+        FocusFavoriteAt(Math.Clamp(currentIndex < 0 ? 0 : currentIndex + direction, 0, buttons.Length - 1));
+    }
+
+    private async Task NavigateToFocusedFavoriteAsync()
+    {
+        if (m_focusedFavorite?.Tag is not SidebarEntryViewModel entry)
+            return;
+        await ViewModel.NavigateToAsync(entry.Path);
+        FocusFirstColumnItem();
+    }
+
+    private void SelectFavoriteByTypedPrefix(string character)
+    {
+        var now = DateTime.UtcNow;
+        m_typeSearch = now - m_lastTypeSearch > TimeSpan.FromMilliseconds(700)
+            ? character
+            : m_typeSearch + character;
+        m_lastTypeSearch = now;
+        var button = GetFavoriteButtons().FirstOrDefault(candidate =>
+            candidate.Tag is SidebarEntryViewModel entry &&
+            entry.Name.StartsWith(m_typeSearch, StringComparison.CurrentCultureIgnoreCase));
+        if (button != null)
+        {
+            SetFocusedFavorite(button);
+            button.Focus();
+        }
     }
 
     private void BringLastColumnIntoViewIfNeeded()
@@ -542,11 +638,25 @@ public partial class MainWindow : Window
     {
         if (ReferenceEquals(m_focusedColumn, listBox))
             return;
+        SetFocusedFavorite(null);
         m_focusedColumn?.Classes.Remove("activeColumn");
         m_focusedColumn = listBox;
         m_focusedColumn?.Classes.Add("activeColumn");
         if (listBox.DataContext is FolderColumnViewModel column)
             ViewModel.ActivateColumn(column);
+    }
+
+    private void SetFocusedFavorite(Button button)
+    {
+        if (ReferenceEquals(m_focusedFavorite, button))
+            return;
+        m_focusedFavorite?.Classes.Remove("keyboardSelected");
+        m_focusedFavorite = button;
+        m_focusedFavorite?.Classes.Add("keyboardSelected");
+        if (button == null)
+            return;
+        m_focusedColumn?.Classes.Remove("activeColumn");
+        m_focusedColumn = null;
     }
 
     private void SelectByTypedPrefix(string character)

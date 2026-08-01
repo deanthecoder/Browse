@@ -77,15 +77,16 @@
               <icons:MaterialIcon Kind="Star" Width="14" Height="14" Foreground="#9CA5B2" />
               <TextBlock Grid.Column="1" Text="FAVORITES" Classes="muted" FontSize="11" FontWeight="SemiBold" />
             </Grid>
-            <ItemsControl ItemsSource="{Binding Favorites}"
+            <ItemsControl x:Name="FavoritesItemsControl"
+                          ItemsSource="{Binding Favorites}"
                           HorizontalAlignment="Stretch"
                           DragDrop.AllowDrop="True"
                           DragDrop.DragOver="OnFavoritesDragOver"
                           DragDrop.Drop="OnFavoritesDrop">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:SidebarEntryViewModel">
-                  <Button Tag="{Binding}" Classes="chrome" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                          Click="OnSidebarClicked">
+                  <Button Tag="{Binding}" Classes="chrome favoriteButton" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                          GotFocus="OnFavoriteGotFocus" Click="OnSidebarClicked">
                     <Button.ContextMenu>
                       <ContextMenu>
                         <MenuItem Header="Open in new window..." Click="OnOpenFavoriteInNewWindowClicked" />
