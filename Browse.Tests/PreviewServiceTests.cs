@@ -168,6 +168,22 @@ public sealed class PreviewServiceTests
         });
     }
 
+    [Test]
+    public async Task CheckInvalidPdfCannotCrashPreviewProcess()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "invalid.pdf"));
+        await File.WriteAllTextAsync(file.FullName, "This is not a PDF.");
+
+        var result = await new PreviewService().CreateAsync([new BrowserItem(file)]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<EmptyPreviewContent>());
+            Assert.That(result.Details, Does.Contain("could not be rendered safely"));
+        });
+    }
+
     [TestCase("sample.mp4", true)]
     [TestCase("sample.avi", true)]
     [TestCase("sample.mov", true)]

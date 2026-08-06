@@ -10,6 +10,7 @@
 
 using Avalonia;
 using Browse.Services;
+using Browse.Services.Previews;
 using DTC.Core;
 
 namespace Browse;
@@ -19,6 +20,12 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        if (PdfPreviewWorker.TryRun(args, out var exitCode))
+        {
+            Environment.ExitCode = exitCode;
+            return;
+        }
+
         using var singleInstance = SingleInstanceGuard.TryAcquire("Browse");
         if (singleInstance == null)
         {
