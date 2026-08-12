@@ -124,6 +124,31 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public async Task CheckGoToFileSelectsFileInContainingFolder()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "target.txt"));
+        await File.WriteAllTextAsync(file.FullName, "selected");
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(),
+            new PreviewService(),
+            new FileOperationService(),
+            new SettingsService());
+        viewModel.ShowGoTo();
+        viewModel.GoToPath = file.FullName;
+
+        var result = await viewModel.SubmitGoToAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.True);
+            Assert.That(viewModel.CurrentPath, Is.EqualTo(temp.FullName));
+            Assert.That(viewModel.SelectedItems.Select(item => item.FullPath), Is.EqualTo(new[] { file.FullName }));
+            Assert.That(viewModel.Columns.Single().IsSelectedPath(file.FullName), Is.True);
+        });
+    }
+
+    [Test]
     public void CheckColumnRefreshReplacesSelectedItemWhenAliasChanges()
     {
         using var temp = new TempDirectory();

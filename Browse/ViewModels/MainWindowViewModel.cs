@@ -346,7 +346,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             StatusText = "The path is not valid.";
             return false;
         }
-        if (File.Exists(path))
+        var selectedFilePath = File.Exists(path) ? path : null;
+        if (selectedFilePath != null)
             path = Path.GetDirectoryName(path);
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
         {
@@ -367,6 +368,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         Settings.DefaultPath = CurrentPath;
         m_settingsService.Save(Settings);
         await AddColumnAsync(directory, m_navigationCancellation.Token);
+        if (selectedFilePath != null && Columns.FirstOrDefault() is { } column)
+        {
+            var file = column.Items.FirstOrDefault(item =>
+                string.Equals(item.FullPath, selectedFilePath, StringComparison.OrdinalIgnoreCase));
+            if (file != null)
+                await SelectAsync(column, [file]);
+        }
         return true;
     }
 
