@@ -455,7 +455,7 @@ public partial class MainWindow : Window
         }
         else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key == Key.Enter)
         {
-            ViewModel.OpenSelected();
+            ViewModel.OpenSelectedFile();
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)

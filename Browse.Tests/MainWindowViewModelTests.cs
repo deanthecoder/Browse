@@ -149,6 +149,32 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public async Task CheckOpenSelectedFileIgnoresFolder()
+    {
+        using var temp = new TempDirectory();
+        var folder = ((DirectoryInfo)temp).CreateSubdirectory("folder");
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(),
+            new PreviewService(),
+            new FileOperationService(),
+            new SettingsService());
+        await viewModel.NavigateToAsync(temp.FullName);
+        var column = viewModel.Columns.Single();
+        var item = column.Items.Single(candidate => candidate.FullPath == folder.FullName);
+        await viewModel.SelectAsync(column, [item]);
+        var columns = viewModel.Columns.ToArray();
+
+        viewModel.OpenSelectedFile();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(viewModel.CurrentPath, Is.EqualTo(folder.FullName));
+            Assert.That(viewModel.Columns, Is.EqualTo(columns));
+            Assert.That(viewModel.SelectedItems, Is.EqualTo(new[] { item }));
+        });
+    }
+
+    [Test]
     public void CheckColumnRefreshReplacesSelectedItemWhenAliasChanges()
     {
         using var temp = new TempDirectory();

@@ -599,6 +599,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    public void OpenSelectedFile()
+    {
+        if (m_selectedItems.Count == 1 && !m_selectedItems[0].IsDirectory)
+            OpenSelected();
+    }
+
     private async Task<string> GetHashTextAsync(HashAlgorithmName algorithm, string displayName)
     {
         var files = m_selectedItems.Where(item => !item.IsDirectory).ToArray();
