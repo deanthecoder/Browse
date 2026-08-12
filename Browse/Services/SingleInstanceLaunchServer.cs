@@ -38,8 +38,12 @@ internal sealed class SingleInstanceLaunchServer : IDisposable
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.Out);
+            using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
             client.Connect(5_000);
+            using var reader = new StreamReader(client, leaveOpen: true);
+            var processIdText = reader.ReadLine();
+            if (int.TryParse(processIdText, out var processId))
+                WindowsForegroundActivation.TryAllowProcess(processId);
             using var writer = new StreamWriter(client) { AutoFlush = true };
             writer.WriteLine(JsonSerializer.Serialize(arguments));
             return true;
@@ -58,11 +62,13 @@ internal sealed class SingleInstanceLaunchServer : IDisposable
             {
                 await using var server = new NamedPipeServerStream(
                     m_pipeName,
-                    PipeDirection.In,
+                    PipeDirection.InOut,
                     1,
                     PipeTransmissionMode.Byte,
                     PipeOptions.Asynchronous);
                 await server.WaitForConnectionAsync(m_cancellation.Token).ConfigureAwait(false);
+                await using var writer = new StreamWriter(server, leaveOpen: true) { AutoFlush = true };
+                await writer.WriteLineAsync(Environment.ProcessId.ToString()).ConfigureAwait(false);
                 using var reader = new StreamReader(server);
                 var json = await reader.ReadLineAsync(m_cancellation.Token).ConfigureAwait(false);
                 var arguments = JsonSerializer.Deserialize<string[]>(json ?? "[]") ?? [];

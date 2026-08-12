@@ -130,8 +130,16 @@ public class App : Application
             viewModel.Dispose();
         };
         if (show)
-            window.Show();
+            ShowAndActivate(window);
         return window;
+    }
+
+    internal static void ShowAndActivate(Window window) => ShowAndActivate(window.Show, window.Activate);
+
+    internal static void ShowAndActivate(Action show, Action activate)
+    {
+        show();
+        activate();
     }
 
     private static double GetWindowDimension(double value, double defaultValue, double minimum) =>

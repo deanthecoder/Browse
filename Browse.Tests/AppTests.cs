@@ -58,4 +58,14 @@ public sealed class AppTests
             Assert.That(style & toolWindow, Is.EqualTo(toolWindow));
         });
     }
+
+    [Test]
+    public void CheckShownWindowIsActivated()
+    {
+        var calls = new List<string>();
+
+        App.ShowAndActivate(() => calls.Add("Show"), () => calls.Add("Activate"));
+
+        Assert.That(calls, Is.EqualTo(new[] { "Show", "Activate" }));
+    }
 }
