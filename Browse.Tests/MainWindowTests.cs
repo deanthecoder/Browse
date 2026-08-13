@@ -89,4 +89,32 @@ public sealed class MainWindowTests
 
         Assert.That(result, Is.EqualTo(temp.FullName));
     }
+
+    [TestCase(2000, 1000, 1000, 700, 0.5)]
+    [TestCase(500, 400, 1000, 700, 1.0)]
+    [TestCase(1000, 2000, 800, 500, 0.25)]
+    public void CheckImageFitZoomNeverEnlargesPastOriginalSize(
+        int imageWidth,
+        int imageHeight,
+        double viewportWidth,
+        double viewportHeight,
+        double expected)
+    {
+        Assert.That(
+            ImagePreviewViewer.GetFitZoom(
+                new Avalonia.PixelSize(imageWidth, imageHeight),
+                new Avalonia.Size(viewportWidth, viewportHeight)),
+            Is.EqualTo(expected));
+    }
+
+    [TestCase(1.0, 0.1, 1.1)]
+    [TestCase(2.0, -0.25, 1.5)]
+    [TestCase(32.0, 0.5, 32.0)]
+    public void CheckTouchpadMagnificationAdjustsCurrentZoom(
+        double zoom,
+        double magnification,
+        double expected)
+    {
+        Assert.That(ImagePreviewViewer.ApplyMagnification(zoom, magnification), Is.EqualTo(expected));
+    }
 }

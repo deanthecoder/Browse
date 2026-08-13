@@ -124,12 +124,17 @@ public partial class PreviewWindow : Window
 
     private async Task UpdatePreviewAsync(CancellationToken cancellationToken)
     {
+        Control preview = null;
         try
         {
-            var preview = await CreatePreviewAsync(cancellationToken);
+            preview = await CreatePreviewAsync(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (IsVisible)
+            {
+                DisposePreviewContent();
                 PreviewHost.Content = preview;
+                preview = null;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -137,7 +142,14 @@ public partial class PreviewWindow : Window
         catch (Exception ex)
         {
             if (IsVisible)
+            {
+                DisposePreviewContent();
                 PreviewHost.Content = CreateMessage($"Preview unavailable · {ex.Message}");
+            }
+        }
+        finally
+        {
+            (preview as IDisposable)?.Dispose();
         }
     }
 
@@ -146,7 +158,17 @@ public partial class PreviewWindow : Window
         if (m_viewModel == null)
             return CreateMessage("No larger preview is available for this item.");
         if (m_viewModel.Preview is ImagePreviewContent image)
-            return new Image { Source = image.Image, Stretch = Stretch.Uniform };
+        {
+            var item = m_viewModel.SelectedItems.Count == 1 ? m_viewModel.SelectedItems[0] : null;
+            if (item != null && ImagePreviewProvider.Extensions.Contains(item.EffectiveExtension))
+            {
+                var bitmap = await Task.Run(
+                    () => ImagePreviewProvider.DecodeFullSize((FileInfo)item.Info, item.EffectiveExtension),
+                    cancellationToken);
+                return new ImagePreviewViewer(bitmap, true);
+            }
+            return new ImagePreviewViewer(image.Image, false);
+        }
         if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Hex } hex)
         {
             var text = await BinaryPreviewProvider.ReadHexDumpAsync(
@@ -294,6 +316,12 @@ public partial class PreviewWindow : Window
         m_previewCancellation.Dispose();
         if (m_viewModel != null)
             m_viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        DisposePreviewContent();
+    }
+
+    private void DisposePreviewContent()
+    {
+        (PreviewHost.Content as IDisposable)?.Dispose();
         PreviewHost.Content = null;
     }
 
