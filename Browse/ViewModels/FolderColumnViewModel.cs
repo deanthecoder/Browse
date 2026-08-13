@@ -33,7 +33,19 @@ public sealed class FolderColumnViewModel : ViewModelBase
         Title = string.IsNullOrWhiteSpace(directory.Name) ? directory.FullName : directory.Name;
     }
 
+    public FolderColumnViewModel(FileInfo archive, string archiveFolderPath)
+    {
+        Archive = archive;
+        ArchiveFolderPath = archiveFolderPath;
+        Title = string.IsNullOrWhiteSpace(archiveFolderPath)
+            ? archive.Name
+            : Path.GetFileName(archiveFolderPath.TrimEnd('/'));
+    }
+
     public DirectoryInfo Directory { get; }
+    public FileInfo Archive { get; }
+    public string ArchiveFolderPath { get; }
+    public bool IsArchive => Archive != null;
     public string Title { get; }
     public ObservableCollection<BrowserItem> Items { get; } = [];
 

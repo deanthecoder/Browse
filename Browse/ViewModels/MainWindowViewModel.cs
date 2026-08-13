@@ -33,6 +33,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly DirectoryContentService m_directoryService;
     private readonly PreviewService m_previewService;
     private readonly FileOperationService m_fileOperationService;
+    private readonly ArchiveContentService m_archiveContentService;
     private readonly SettingsService m_settingsService;
     private readonly List<BrowserItem> m_selectedItems = [];
     private readonly List<BrowserItem> m_clipboardItems = [];
@@ -66,11 +67,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         DirectoryContentService directoryService,
         PreviewService previewService,
         FileOperationService fileOperationService,
-        SettingsService settingsService)
+        SettingsService settingsService,
+        ArchiveContentService archiveContentService = null)
     {
         m_directoryService = directoryService;
         m_previewService = previewService;
         m_fileOperationService = fileOperationService;
+        m_archiveContentService = archiveContentService ?? new ArchiveContentService();
         m_settingsService = settingsService;
         Settings = settingsService.Load();
         m_extensionAliasesText = string.Join(Environment.NewLine, Settings.ExtensionAliases ?? []);
@@ -291,6 +294,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public bool ClipboardMatches(IEnumerable<string> paths)
     {
+        if (m_clipboardItems.Any(item => item.IsArchiveEntry))
+            return true;
         var clipboardPaths = paths.ToHashSet(StringComparer.OrdinalIgnoreCase);
         return clipboardPaths.Count == m_clipboardItems.Count &&
                m_clipboardItems.All(item => clipboardPaths.Contains(item.FullPath));
@@ -409,14 +414,24 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         FolderSizeExact = null;
         _ = UpdatePreviewAsync();
 
-        if (selection.Count == 1 && selection[0].IsDirectory)
+        if (selection.Count == 1 && selection[0].IsArchiveEntry && selection[0].IsDirectory)
+        {
+            CurrentPath = column.Archive?.Directory?.FullName ?? CurrentPath;
+            await AddArchiveColumnAsync(new FileInfo(selection[0].ArchivePath), selection[0].ArchiveEntryPath, m_navigationCancellation.Token);
+        }
+        else if (selection.Count == 1 && selection[0].IsZipArchive)
+        {
+            CurrentPath = column.Directory.FullName;
+            await AddArchiveColumnAsync(new FileInfo(selection[0].FullPath), string.Empty, m_navigationCancellation.Token);
+        }
+        else if (selection.Count == 1 && selection[0].IsDirectory)
         {
             CurrentPath = selection[0].FullPath;
             await AddColumnAsync(new DirectoryInfo(selection[0].FullPath), m_navigationCancellation.Token);
         }
         else
         {
-            CurrentPath = column.Directory.FullName;
+            CurrentPath = column.IsArchive ? column.Archive.Directory.FullName : column.Directory.FullName;
         }
         StatusText = selection.Count == 0 ? $"{column.Items.Count:N0} items" : $"{selection.Count:N0} selected";
     }
@@ -437,9 +452,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         FolderSize = null;
         FolderSizeExact = null;
         _ = UpdatePreviewAsync();
-        CurrentPath = selection.Length == 1 && selection[0].IsDirectory
+        CurrentPath = selection.Length == 1 && selection[0].IsArchiveEntry
+            ? column.Archive?.Directory?.FullName
+            : selection.Length == 1 && selection[0].IsDirectory
             ? selection[0].FullPath
-            : column.Directory.FullName;
+            : column.IsArchive ? column.Archive.Directory.FullName : column.Directory.FullName;
         StatusText = selection.Length == 0 ? $"{column.Items.Count:N0} items" : $"{selection.Length:N0} selected";
     }
 
@@ -467,9 +484,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         m_clipboardItems.Clear();
         m_clipboardItems.AddRange(m_selectedItems);
-        m_clipboardIsCut = cut;
+        m_clipboardIsCut = cut && !m_clipboardItems.Any(item => item.IsArchiveEntry);
         OnPropertyChanged(nameof(CanPaste));
-        StatusText = $"{m_clipboardItems.Count:N0} item(s) ready to {(cut ? "move" : "copy")}.";
+        StatusText = $"{m_clipboardItems.Count:N0} item(s) ready to {(m_clipboardIsCut ? "move" : "copy")}.";
     }
 
     public Task PasteAsync()
@@ -494,7 +511,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         StatusText = m_clipboardIsCut ? "Moving…" : "Copying…";
         try
         {
-            await m_fileOperationService.CopyAsync(m_clipboardItems, destination, m_clipboardIsCut);
+            var archiveItems = m_clipboardItems.Where(item => item.IsArchiveEntry).ToArray();
+            var fileItems = m_clipboardItems.Where(item => !item.IsArchiveEntry).ToArray();
+            if (archiveItems.Length > 0)
+                await m_archiveContentService.ExtractAsync(archiveItems, destination);
+            if (fileItems.Length > 0)
+                await m_fileOperationService.CopyAsync(fileItems, destination, m_clipboardIsCut);
             m_directoryService.Invalidate(destination);
             if (m_clipboardIsCut)
             {
@@ -563,6 +585,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public IReadOnlyList<BrowserItem> SelectedItems => m_selectedItems;
 
+    public Task<IReadOnlyList<string>> PrepareArchiveDragAsync(IEnumerable<BrowserItem> items, CancellationToken cancellationToken = default) =>
+        m_archiveContentService.CreateDragFilesAsync(items, cancellationToken);
+
     public static string JoinPaths(IEnumerable<BrowserItem> items, bool namesOnly = false) =>
         string.Join(' ', items.Select(item => QuoteIfNeeded(namesOnly ? item.Name : item.FullPath)));
 
@@ -619,6 +644,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         if (m_selectedItems.Count != 1)
             return;
+        if (m_selectedItems[0].IsArchiveEntry)
+        {
+            if (m_selectedItems[0].IsDirectory)
+                _ = SelectAsync(Columns.First(column => column.Items.Contains(m_selectedItems[0])), m_selectedItems);
+            return;
+        }
         if (m_selectedItems[0].IsDirectory)
             _ = NavigateToAsync(m_selectedItems[0].FullPath);
         else
@@ -680,7 +711,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public void BeginRename()
     {
-        if (m_selectedItems.Count != 1)
+        if (m_selectedItems.Count != 1 || m_selectedItems[0].IsArchiveEntry)
             return;
         RenameText = m_selectedItems[0].Name;
         IsRenameVisible = true;
@@ -732,7 +763,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public async Task CreateZipAsync()
     {
-        if (m_selectedItems.Count == 0)
+        if (m_selectedItems.Count == 0 || m_selectedItems.Any(item => item.IsArchiveEntry))
             return;
         var parent = new DirectoryInfo(Path.GetDirectoryName(m_selectedItems[0].FullPath) ?? CurrentPath);
         var baseName = m_selectedItems.Count == 1 ? Path.GetFileNameWithoutExtension(m_selectedItems[0].Name) : "Archive";
@@ -780,7 +811,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public async Task DeleteSelectionAsync()
     {
-        if (m_selectedItems.Count == 0)
+        if (m_selectedItems.Count == 0 || m_selectedItems.Any(item => item.IsArchiveEntry))
             return;
         var items = m_selectedItems.ToArray();
         var column = Columns.FirstOrDefault(candidate => items.Any(candidate.Items.Contains));
@@ -903,7 +934,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         for (var index = 0; index < Columns.Count; index++)
         {
             var column = Columns[index];
-            if (!Directory.Exists(column.Directory.FullName))
+            if (!column.IsArchive && !Directory.Exists(column.Directory.FullName))
             {
                 while (Columns.Count > index)
                     RemoveLastColumn();
@@ -921,6 +952,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         Watch(column);
     }
 
+    private async Task AddArchiveColumnAsync(FileInfo archive, string folderPath, CancellationToken cancellationToken)
+    {
+        var column = new FolderColumnViewModel(archive, folderPath);
+        Columns.Add(column);
+        await LoadColumnAsync(column, cancellationToken);
+    }
+
     private async Task LoadColumnAsync(FolderColumnViewModel column, CancellationToken cancellationToken)
     {
         column.IsLoading = true;
@@ -928,8 +966,16 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         column.Error = null;
         try
         {
-            var items = await m_directoryService.GetItemsAsync(column.Directory, Settings, cancellationToken);
-            column.ReplaceItems(DateModifiedGrouping.Apply(items, GroupByDateModified, DateTime.Now));
+            if (column.IsArchive)
+            {
+                var items = await m_archiveContentService.GetItemsAsync(column.Archive, column.ArchiveFolderPath, cancellationToken);
+                column.ReplaceItems(items);
+            }
+            else
+            {
+                var items = await m_directoryService.GetItemsAsync(column.Directory, Settings, cancellationToken);
+                column.ReplaceItems(DateModifiedGrouping.Apply(items, GroupByDateModified, DateTime.Now));
+            }
         }
         catch (OperationCanceledException)
         {
@@ -978,7 +1024,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         {
             if (shouldDelay)
                 await Task.Delay(PreviewDelay, cancellationToken);
-            var preview = await m_previewService.CreateAsync(selection, cancellationToken);
+            var preview = selection.Length == 1 && selection[0].IsArchiveEntry
+                ? new EmptyPreviewContent(selection[0].Name, selection[0].FullPath, selection[0].ArchiveSizeDetails)
+                : await m_previewService.CreateAsync(selection, cancellationToken);
             if (cancellationToken.IsCancellationRequested)
             {
                 preview.Dispose();
@@ -1106,6 +1154,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private void Watch(FolderColumnViewModel column)
     {
+        if (column.IsArchive)
+            return;
         try
         {
             var watcher = new FileSystemWatcher(column.Directory.FullName)
@@ -1165,6 +1215,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_previewCancellation.Cancel();
         m_previewCancellation.Dispose();
         m_preview.Dispose();
+        m_archiveContentService.Dispose();
     }
 
     private static string ExpandPath(string path)

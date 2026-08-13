@@ -33,6 +33,7 @@ public partial class MainWindow : Window
 {
     private const double ColumnWidth = 270;
     private static readonly DataFormat<string> FavoriteDataFormat = DataFormat.CreateStringApplicationFormat("Browse.Favorite");
+    private static readonly DataFormat<string> ArchiveDragDataFormat = DataFormat.CreateStringApplicationFormat("Browse.ArchiveDrag");
     private readonly string m_requestedPath;
     private readonly bool m_openFromClipboard;
     private readonly ClipboardImageService m_clipboardImageService;
@@ -171,14 +172,21 @@ public partial class MainWindow : Window
 
     private void OnColumnDragOver(object sender, DragEventArgs e)
     {
-        e.DragEffects = e.DataTransfer.Contains(DataFormat.File)
+        if (sender is ListBox { DataContext: FolderColumnViewModel { IsArchive: true } })
+        {
+            e.DragEffects = DragDropEffects.None;
+            return;
+        }
+        e.DragEffects = e.DataTransfer.Contains(ArchiveDragDataFormat)
+            ? DragDropEffects.Copy
+            : e.DataTransfer.Contains(DataFormat.File)
             ? e.KeyModifiers.HasFlag(KeyModifiers.Control) ? DragDropEffects.Copy : DragDropEffects.Move
             : DragDropEffects.None;
     }
 
     private void OnItemDragOver(object sender, DragEventArgs e)
     {
-        if (sender is not Grid { Tag: BrowserItem { IsDirectory: true } } target ||
+        if (sender is not Grid { Tag: BrowserItem { CanReceiveFiles: true } } target ||
             !e.DataTransfer.Contains(DataFormat.File))
         {
             e.DragEffects = DragDropEffects.None;
@@ -186,7 +194,9 @@ public partial class MainWindow : Window
         }
         if (!target.Classes.Contains("folderDropTarget"))
             target.Classes.Add("folderDropTarget");
-        e.DragEffects = e.KeyModifiers.HasFlag(KeyModifiers.Control) ? DragDropEffects.Copy : DragDropEffects.Move;
+        e.DragEffects = e.DataTransfer.Contains(ArchiveDragDataFormat) || e.KeyModifiers.HasFlag(KeyModifiers.Control)
+            ? DragDropEffects.Copy
+            : DragDropEffects.Move;
         e.Handled = true;
     }
 
@@ -198,7 +208,7 @@ public partial class MainWindow : Window
 
     private async void OnItemDrop(object sender, DragEventArgs e)
     {
-        if (sender is not Grid { Tag: BrowserItem { IsDirectory: true } folder } target)
+        if (sender is not Grid { Tag: BrowserItem { CanReceiveFiles: true } folder } target)
             return;
         target.Classes.Remove("folderDropTarget");
         var paths = e.DataTransfer.TryGetFiles()?
@@ -211,7 +221,7 @@ public partial class MainWindow : Window
         await ViewModel.ImportDroppedPathsAsync(
             paths,
             new DirectoryInfo(folder.FullPath),
-            !e.KeyModifiers.HasFlag(KeyModifiers.Control));
+            !e.DataTransfer.Contains(ArchiveDragDataFormat) && !e.KeyModifiers.HasFlag(KeyModifiers.Control));
     }
 
     private void OnColumnPointerPressed(object sender, PointerPressedEventArgs e)
@@ -238,7 +248,7 @@ public partial class MainWindow : Window
                     ViewModel.SetContextSelection((FolderColumnViewModel)listBox.DataContext, [contextItem]);
                 }
                 SetFocusedColumn(listBox);
-                m_contextDestination = contextItem.IsDirectory
+                m_contextDestination = contextItem.CanReceiveFiles
                     ? new DirectoryInfo(contextItem.FullPath)
                     : ((FolderColumnViewModel)listBox.DataContext).Directory;
                 m_pendingContextMenu = (ContextMenu)Resources["ItemContextMenu"];
@@ -299,13 +309,13 @@ public partial class MainWindow : Window
 
     private async void OnColumnDrop(object sender, DragEventArgs e)
     {
-        if (sender is not ListBox { DataContext: FolderColumnViewModel column })
+        if (sender is not ListBox { DataContext: FolderColumnViewModel { IsArchive: false } column })
             return;
         var files = e.DataTransfer.TryGetFiles();
         if (files == null)
             return;
         var paths = files.Select(file => file.TryGetLocalPath()).Where(path => path != null);
-        var move = !e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        var move = !e.DataTransfer.Contains(ArchiveDragDataFormat) && !e.KeyModifiers.HasFlag(KeyModifiers.Control);
         await ViewModel.ImportDroppedPathsAsync(paths, column.Directory, move);
     }
 
@@ -321,6 +331,30 @@ public partial class MainWindow : Window
         ClearPendingDrag();
         if (draggedItems.Length == 0)
             return;
+        if (draggedItems.Any(item => item.IsArchiveEntry))
+        {
+            try
+            {
+                var paths = await ViewModel.PrepareArchiveDragAsync(draggedItems);
+                var archiveTransfer = new DataTransfer();
+                archiveTransfer.Add(DataTransferItem.Create(ArchiveDragDataFormat, "copy"));
+                foreach (var path in paths)
+                {
+                    IStorageItem storageItem = Directory.Exists(path)
+                        ? await StorageProvider.TryGetFolderFromPathAsync(path)
+                        : await StorageProvider.TryGetFileFromPathAsync(path);
+                    if (storageItem != null)
+                        archiveTransfer.Add(DataTransferItem.CreateFile(storageItem));
+                }
+                if (archiveTransfer.Items.Count > 0)
+                    await DragDrop.DoDragDropAsync(e, archiveTransfer, DragDropEffects.Copy);
+            }
+            catch (Exception ex)
+            {
+                ViewModel.ReportStatus(ex.Message);
+            }
+            return;
+        }
         var transfer = new DataTransfer();
         foreach (var item in draggedItems)
         {
@@ -900,6 +934,11 @@ public partial class MainWindow : Window
     private async Task CopySelectionAsync(bool cut)
     {
         ViewModel.CopySelection(cut);
+        if (ViewModel.SelectedItems.Any(item => item.IsArchiveEntry))
+        {
+            m_externalClipboardPaths = [];
+            return;
+        }
         if (Clipboard == null)
             return;
         var storageItems = new List<IStorageItem>();
@@ -928,7 +967,7 @@ public partial class MainWindow : Window
             .OfType<MenuItem>()
             .FirstOrDefault(item => string.Equals(item.Header?.ToString(), "Paste", StringComparison.Ordinal));
         if (pasteItem != null)
-            pasteItem.IsEnabled = m_externalClipboardPaths.Length > 0;
+            pasteItem.IsEnabled = ViewModel.CanPaste || m_externalClipboardPaths.Length > 0;
         var pasteButton = contextMenu.Items
             .OfType<MenuItem>()
             .Select(item => item.Header)
@@ -937,7 +976,7 @@ public partial class MainWindow : Window
             .OfType<Button>()
             .FirstOrDefault(button => string.Equals(button.Tag?.ToString(), "PasteAction", StringComparison.Ordinal));
         if (pasteButton != null)
-            pasteButton.IsEnabled = m_externalClipboardPaths.Length > 0;
+            pasteButton.IsEnabled = ViewModel.CanPaste || m_externalClipboardPaths.Length > 0;
     }
 
     private async Task PasteSelectionAsync(DirectoryInfo destination = null)

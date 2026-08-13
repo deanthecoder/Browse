@@ -21,40 +21,40 @@
         Title="{Binding WindowTitle}">
   <Window.Resources>
     <ContextMenu x:Key="ItemContextMenu">
-      <MenuItem Header="Open" Click="OnOpenClicked" IsVisible="{Binding !IsDirectory}" />
-      <MenuItem Header="Browse here..." Click="OnOpenInNewWindowClicked" IsVisible="{Binding IsDirectory}" />
-      <MenuItem Header="Open terminal here" Click="OnTerminalClicked" />
+      <MenuItem Header="Open" Click="OnOpenClicked" IsVisible="{Binding CanOpen}" />
+      <MenuItem Header="Browse here..." Click="OnOpenInNewWindowClicked" IsVisible="{Binding CanBrowseInNewWindow}" />
+      <MenuItem Header="Open terminal here" Click="OnTerminalClicked" IsVisible="{Binding !IsArchiveEntry}" />
       <Separator />
       <MenuItem StaysOpenOnClick="True" Padding="4">
         <MenuItem.Header>
           <Grid ColumnDefinitions="Auto,Auto,Auto,12,Auto" ColumnSpacing="4">
-            <Button Grid.Column="0" Classes="chrome" Padding="8,5" ToolTip.Tip="Cut" Click="OnCutClicked">
+            <Button Grid.Column="0" Classes="chrome" Padding="8,5" ToolTip.Tip="Cut" Click="OnCutClicked" IsVisible="{Binding !IsArchiveEntry}">
               <icons:MaterialIcon Kind="ContentCut" Width="18" Height="18" />
             </Button>
             <Button Grid.Column="1" Classes="chrome" Padding="8,5" ToolTip.Tip="Copy" Click="OnCopyClicked">
               <icons:MaterialIcon Kind="ContentCopy" Width="18" Height="18" />
             </Button>
-            <Button Grid.Column="2" Tag="PasteAction" Classes="chrome" Padding="8,5" ToolTip.Tip="Paste" Click="OnPasteClicked" IsVisible="{Binding IsDirectory}">
+            <Button Grid.Column="2" Tag="PasteAction" Classes="chrome" Padding="8,5" ToolTip.Tip="Paste" Click="OnPasteClicked" IsVisible="{Binding CanReceiveFiles}">
               <icons:MaterialIcon Kind="ContentPaste" Width="18" Height="18" />
             </Button>
-            <Button Grid.Column="4" Classes="chrome" Padding="8,5" ToolTip.Tip="Delete" Click="OnDeleteClicked">
+            <Button Grid.Column="4" Classes="chrome" Padding="8,5" ToolTip.Tip="Delete" Click="OnDeleteClicked" IsVisible="{Binding !IsArchiveEntry}">
               <icons:MaterialIcon Kind="DeleteOutline" Width="18" Height="18" Foreground="#E98282" />
             </Button>
           </Grid>
         </MenuItem.Header>
       </MenuItem>
-      <MenuItem Header="Rename" InputGesture="F2" Click="OnRenameClicked" />
-      <MenuItem Header="New folder..." Click="OnNewFolderClicked" IsVisible="{Binding IsDirectory}" />
+      <MenuItem Header="Rename" InputGesture="F2" Click="OnRenameClicked" IsVisible="{Binding !IsArchiveEntry}" />
+      <MenuItem Header="New folder..." Click="OnNewFolderClicked" IsVisible="{Binding CanReceiveFiles}" />
       <Separator />
       <MenuItem Header="Copy full path(s)" Click="OnCopyPathsClicked" />
       <MenuItem Header="Copy as image" Click="OnCopyAsImageClicked" IsVisible="{Binding CanCopyAsImage}" />
-      <MenuItem Header="Advanced" IsVisible="{Binding !IsDirectory}">
+      <MenuItem Header="Advanced" IsVisible="{Binding CanShowAdvancedActions}">
         <MenuItem Header="Copy MD5 hash" Click="OnCopyMd5Clicked" />
         <MenuItem Header="Copy SHA-256 hash" Click="OnCopySha256Clicked" />
         <MenuItem Header="Copy as Base64" Click="OnCopyBase64Clicked" />
       </MenuItem>
       <Separator />
-      <MenuItem Header="Compress" Click="OnCreateZipClicked" />
+      <MenuItem Header="Compress" Click="OnCreateZipClicked" IsVisible="{Binding !IsArchiveEntry}" />
       <MenuItem Header="Expand archive" Click="OnExpandZipClicked" IsVisible="{Binding IsZipArchive}" />
     </ContextMenu>
     <ContextMenu x:Key="ColumnContextMenu">
@@ -174,7 +174,7 @@
                                     DragDrop.DragLeave="OnItemDragLeave"
                                     DragDrop.Drop="OnItemDrop">
                                 <icons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="18" Height="18" Foreground="{Binding IconBrush}" />
-                                <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{Binding TextBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="2" Text="›" FontSize="18" Classes="muted" IsVisible="{Binding IsDirectory}" />
                               </Grid>
                             </Border>

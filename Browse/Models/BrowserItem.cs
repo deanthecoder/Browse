@@ -12,6 +12,7 @@ namespace Browse.Models;
 
 using Avalonia.Media;
 using Browse.Services;
+using DTC.Core.Extensions;
 using Material.Icons;
 
 /// <summary>
@@ -22,6 +23,8 @@ using Material.Icons;
 /// </remarks>
 public sealed class BrowserItem
 {
+    private static readonly IBrush StandardTextBrush = Brush.Parse("#E6EAF0");
+    private static readonly IBrush ArchiveTextBrush = Brush.Parse("#D8C89B");
     private readonly FileTypeAliasMap m_aliases;
 
     public BrowserItem(FileSystemInfo info, FileTypeAliasMap aliases = null, string groupHeading = null)
@@ -49,18 +52,46 @@ public sealed class BrowserItem
         (Icon, IconBrush) = GetIcon();
     }
 
+    private BrowserItem(FileInfo archive, string entryPath, string name, bool isDirectory, DateTime lastWriteTime, long? size, long? compressedSize)
+    {
+        Info = null;
+        Name = name;
+        FullPath = $"{archive.FullName}|{entryPath}";
+        ArchivePath = archive.FullName;
+        ArchiveEntryPath = entryPath;
+        IsArchiveEntry = true;
+        IsDirectory = isDirectory;
+        EffectiveExtension = isDirectory ? string.Empty : Path.GetExtension(name).ToLowerInvariant();
+        LastWriteTime = lastWriteTime;
+        Size = size;
+        ArchiveCompressedSize = compressedSize;
+        (Icon, IconBrush) = GetIcon();
+    }
+
     public FileSystemInfo Info { get; }
     public string Name { get; }
     public string FullPath { get; }
     public bool IsDirectory { get; }
     public string EffectiveExtension { get; }
     public bool IsZipArchive => !IsDirectory && EffectiveExtension.Equals(".zip", StringComparison.OrdinalIgnoreCase);
+    public bool IsArchiveEntry { get; }
+    public bool CanReceiveFiles => IsDirectory && !IsArchiveEntry;
+    public bool CanOpen => !IsDirectory && !IsArchiveEntry;
+    public bool CanBrowseInNewWindow => IsDirectory && !IsArchiveEntry;
+    public bool CanShowAdvancedActions => !IsDirectory && !IsArchiveEntry;
+    public string ArchivePath { get; }
+    public string ArchiveEntryPath { get; }
+    public IBrush TextBrush => IsArchiveEntry ? ArchiveTextBrush : StandardTextBrush;
     public bool CanCopyAsImage => ClipboardImageService.CanCopy(this);
     public bool IsDotFolder { get; }
     public bool IsHidden { get; }
     public bool IsUnavailable { get; }
     public DateTime LastWriteTime { get; }
     public long? Size { get; }
+    public long? ArchiveCompressedSize { get; }
+    public string ArchiveSizeDetails => !IsArchiveEntry || IsDirectory
+        ? "Archive folder · Read-only"
+        : $"Archive item · {Size?.ToSize() ?? "Unknown size"} uncompressed · {ArchiveCompressedSize?.ToSize() ?? "Unknown size"} compressed";
     public MaterialIconKind Icon { get; }
     public IBrush IconBrush { get; }
     public string GroupHeading { get; }
@@ -68,6 +99,12 @@ public sealed class BrowserItem
     internal BrowserItem Refresh() => new(
         IsDirectory ? new DirectoryInfo(FullPath) : new FileInfo(FullPath),
         m_aliases);
+
+    public static BrowserItem FromArchiveEntry(FileInfo archive, System.IO.Compression.ZipArchiveEntry entry, string entryPath, bool isDirectory) =>
+        new(archive, entryPath, Path.GetFileName(entryPath.TrimEnd('/')), isDirectory, entry.LastWriteTime.LocalDateTime, isDirectory ? null : entry.Length, isDirectory ? null : entry.CompressedLength);
+
+    public static BrowserItem FromArchiveDirectory(FileInfo archive, string entryPath) =>
+        new(archive, entryPath, Path.GetFileName(entryPath.TrimEnd('/')), true, archive.LastWriteTime, null, null);
 
     internal BrowserItem WithGroupHeading(string heading) => new(
         IsDirectory ? new DirectoryInfo(FullPath) : new FileInfo(FullPath),
