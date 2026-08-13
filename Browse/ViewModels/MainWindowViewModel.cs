@@ -518,7 +518,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             foreach (var group in m_selectedItems.GroupBy(item => Path.GetDirectoryName(item.FullPath)!))
             {
                 var destination = new DirectoryInfo(group.Key);
-                await m_fileOperationService.CopyAsync(group.ToArray(), destination, false);
+                await m_fileOperationService.DuplicateAsync(group.ToArray(), destination);
                 m_directoryService.Invalidate(destination);
             }
             await ReloadCurrentAsync();

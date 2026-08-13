@@ -30,6 +30,17 @@ public sealed class FileOperationService
     private const int LockViolation = 33;
     private static readonly TimeSpan FileLockRetryDelay = TimeSpan.FromMilliseconds(100);
     public Task CopyAsync(IReadOnlyList<BrowserItem> items, DirectoryInfo destination, bool move, CancellationToken cancellationToken = default) =>
+        CopyAsync(items, destination, move, false, cancellationToken);
+
+    public Task DuplicateAsync(IReadOnlyList<BrowserItem> items, DirectoryInfo destination, CancellationToken cancellationToken = default) =>
+        CopyAsync(items, destination, false, true, cancellationToken);
+
+    private static Task CopyAsync(
+        IReadOnlyList<BrowserItem> items,
+        DirectoryInfo destination,
+        bool move,
+        bool updateModifiedTime,
+        CancellationToken cancellationToken) =>
         Task.Run(() =>
         {
             foreach (var item in items.Where(item => item.IsDirectory))
@@ -58,6 +69,13 @@ public sealed class FileOperationService
                 else
                 {
                     File.Copy(item.FullPath, targetPath);
+                }
+                if (updateModifiedTime)
+                {
+                    if (item.IsDirectory)
+                        Directory.SetLastWriteTimeUtc(targetPath, DateTime.UtcNow);
+                    else
+                        File.SetLastWriteTimeUtc(targetPath, DateTime.UtcNow);
                 }
             }
         }, cancellationToken);

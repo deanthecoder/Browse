@@ -114,6 +114,35 @@ public sealed class FileOperationServiceTests
         Assert.That(folder.Exists, Is.True);
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task CheckDuplicateUpdatesTopLevelModifiedTime(bool isFolder)
+    {
+        using var temp = new TempDirectory();
+        var root = (DirectoryInfo)temp;
+        var oldTime = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        FileSystemInfo source;
+        if (isFolder)
+        {
+            source = root.CreateSubdirectory("old-item");
+            Directory.SetLastWriteTimeUtc(source.FullName, oldTime);
+        }
+        else
+        {
+            source = new FileInfo(Path.Combine(root.FullName, "old-item.txt"));
+            File.WriteAllText(source.FullName, "old");
+            File.SetLastWriteTimeUtc(source.FullName, oldTime);
+        }
+
+        await new FileOperationService().DuplicateAsync([new BrowserItem(source)], root);
+
+        var duplicatePath = Path.Combine(root.FullName, isFolder ? "old-item (2)" : "old-item (2).txt");
+        var modifiedTime = isFolder
+            ? Directory.GetLastWriteTimeUtc(duplicatePath)
+            : File.GetLastWriteTimeUtc(duplicatePath);
+        Assert.That(modifiedTime, Is.GreaterThan(oldTime));
+    }
+
     [Test]
     public void CheckCopyIntoOwnDescendantIsRejectedBeforeCreatingDestination()
     {
