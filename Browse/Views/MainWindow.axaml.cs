@@ -369,7 +369,17 @@ public partial class MainWindow : Window
     private void OnOpenClicked(object sender, RoutedEventArgs e) => ViewModel.OpenSelected();
     private void OnExpandPreviewClicked(object sender, RoutedEventArgs e)
     {
+        ShowExpandedPreview();
+    }
+
+    private void ShowExpandedPreview()
+    {
         if (m_previewWindow != null)
+        {
+            m_previewWindow.Activate();
+            return;
+        }
+        if (!ViewModel.CanExpandPreview)
             return;
         m_previewWindow = new PreviewWindow(ViewModel);
         ExpandPreviewButton.IsEnabled = false;
@@ -557,6 +567,11 @@ public partial class MainWindow : Window
         else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key is Key.Home or Key.End)
         {
             MoveColumnSelectionToBoundary(e.Key == Key.End);
+            e.Handled = true;
+        }
+        else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key == Key.Space)
+        {
+            ShowExpandedPreview();
             e.Handled = true;
         }
         else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.KeySymbol is { Length: 1 } symbol && !char.IsControl(symbol[0]))
