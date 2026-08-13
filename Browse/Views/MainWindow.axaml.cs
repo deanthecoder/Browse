@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private readonly string m_requestedPath;
     private Point? m_dragStart;
     private ListBox m_dragSource;
+    private BrowserItem[] m_dragItems;
     private ListBox m_focusedColumn;
     private ContextMenu m_pendingContextMenu;
     private ContextMenu m_openContextMenu;
@@ -218,7 +219,11 @@ public partial class MainWindow : Window
                                e.KeyModifiers.HasFlag(KeyModifiers.Meta) ||
                                e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         if (!extendsSelection && itemContainer.DataContext is BrowserItem item)
+        {
+            if (listBox.SelectedItems.Contains(item))
+                m_dragItems = listBox.SelectedItems.Cast<BrowserItem>().ToArray();
             listBox.SelectedItem = item;
+        }
         SetFocusedColumn(listBox);
         m_dragSource = listBox;
         m_dragStart = e.GetPosition(this);
@@ -264,7 +269,7 @@ public partial class MainWindow : Window
         var position = e.GetPosition(this);
         if (Math.Abs(position.X - m_dragStart.Value.X) < 14 && Math.Abs(position.Y - m_dragStart.Value.Y) < 14)
             return;
-        var draggedItems = listBox.SelectedItems.Cast<BrowserItem>().ToArray();
+        var draggedItems = m_dragItems ?? listBox.SelectedItems.Cast<BrowserItem>().ToArray();
         ClearPendingDrag();
         if (draggedItems.Length == 0)
             return;
@@ -290,6 +295,7 @@ public partial class MainWindow : Window
     {
         m_dragStart = null;
         m_dragSource = null;
+        m_dragItems = null;
     }
 
     private void OnItemDoubleTapped(object sender, TappedEventArgs e)
