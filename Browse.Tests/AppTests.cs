@@ -72,8 +72,8 @@ public sealed class AppTests
     [TestCase(true)]
     [TestCase(false, "/some/path")]
     [TestCase(false, "--background")]
-    public void CheckOnlyPathlessSecondaryLaunchUsesClipboard(bool expected, params string[] arguments)
+    public void CheckOnlyPathlessLaunchUsesClipboard(bool expected, params string[] arguments)
     {
-        Assert.That(App.SecondaryLaunchUsesClipboard(arguments), Is.EqualTo(expected));
+        Assert.That(App.PathlessLaunchUsesClipboard(arguments), Is.EqualTo(expected));
     }
 }

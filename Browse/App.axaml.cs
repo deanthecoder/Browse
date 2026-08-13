@@ -48,7 +48,10 @@ public class App : Application
             var requestedPath = GetRequestedPath(desktop.Args);
             if (!backgroundOnly)
             {
-                desktop.MainWindow = CreateWindow(requestedPath, false);
+                desktop.MainWindow = CreateWindow(
+                    requestedPath,
+                    false,
+                    openFromClipboard: PathlessLaunchUsesClipboard(desktop.Args));
                 desktop.MainWindow.Show();
             }
             m_trayIcon = CreateTrayIcon(desktop);
@@ -74,11 +77,11 @@ public class App : Application
         if (!IsBackgroundLaunch(arguments))
         {
             var requestedPath = GetRequestedPath(arguments);
-            CreateWindow(requestedPath, openFromClipboard: SecondaryLaunchUsesClipboard(arguments));
+            CreateWindow(requestedPath, openFromClipboard: PathlessLaunchUsesClipboard(arguments));
         }
     }
 
-    internal static bool SecondaryLaunchUsesClipboard(IEnumerable<string> arguments) =>
+    internal static bool PathlessLaunchUsesClipboard(IEnumerable<string> arguments) =>
         !IsBackgroundLaunch(arguments) && GetRequestedPath(arguments) == null;
 
     private static bool IsBackgroundLaunch(IEnumerable<string> arguments) =>
