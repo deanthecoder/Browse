@@ -68,4 +68,12 @@ public sealed class AppTests
 
         Assert.That(calls, Is.EqualTo(new[] { "Show", "Activate" }));
     }
+
+    [TestCase(true)]
+    [TestCase(false, "/some/path")]
+    [TestCase(false, "--background")]
+    public void CheckOnlyPathlessSecondaryLaunchUsesClipboard(bool expected, params string[] arguments)
+    {
+        Assert.That(App.SecondaryLaunchUsesClipboard(arguments), Is.EqualTo(expected));
+    }
 }

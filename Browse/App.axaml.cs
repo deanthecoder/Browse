@@ -72,8 +72,14 @@ public class App : Application
     private void HandleSecondaryLaunch(IReadOnlyList<string> arguments)
     {
         if (!IsBackgroundLaunch(arguments))
-            CreateWindow(GetRequestedPath(arguments));
+        {
+            var requestedPath = GetRequestedPath(arguments);
+            CreateWindow(requestedPath, openFromClipboard: SecondaryLaunchUsesClipboard(arguments));
+        }
     }
+
+    internal static bool SecondaryLaunchUsesClipboard(IEnumerable<string> arguments) =>
+        !IsBackgroundLaunch(arguments) && GetRequestedPath(arguments) == null;
 
     private static bool IsBackgroundLaunch(IEnumerable<string> arguments) =>
         arguments?.Any(argument => argument.Equals("--background", StringComparison.OrdinalIgnoreCase)) == true;
