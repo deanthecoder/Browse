@@ -11,6 +11,7 @@
 using Avalonia.Input;
 using Browse.Models;
 using Browse.Views;
+using DTC.Core;
 
 namespace Browse.Tests;
 
@@ -67,5 +68,25 @@ public sealed class MainWindowTests
         Assert.That(
             MainWindow.GetPageTargetIndex(currentIndex, itemCount, visibleItemCount, direction),
             Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void CheckClipboardFileObjectProvidesNewWindowPath()
+    {
+        using var temp = new TempDirectory();
+
+        var result = MainWindow.GetClipboardNavigationPath([temp.FullName], null);
+
+        Assert.That(result, Is.EqualTo(temp.FullName));
+    }
+
+    [Test]
+    public void CheckClipboardTextProvidesNewWindowPath()
+    {
+        using var temp = new TempDirectory();
+
+        var result = MainWindow.GetClipboardNavigationPath([], $"\"{temp.FullName}\"");
+
+        Assert.That(result, Is.EqualTo(temp.FullName));
     }
 }

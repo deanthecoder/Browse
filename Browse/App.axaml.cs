@@ -55,7 +55,7 @@ public class App : Application
             TrayIcon.SetIcons(this, [m_trayIcon]);
             if (OperatingSystem.IsWindows() && m_settingsService.Load().EnableGlobalShortcut)
             {
-                m_hotKeyHost = new WindowsGlobalHotKeyHost(() => CreateWindow());
+                m_hotKeyHost = new WindowsGlobalHotKeyHost(() => CreateWindow(openFromClipboard: true));
                 m_hotKeyHost.Show();
             }
             desktop.Exit += (_, _) =>
@@ -81,7 +81,11 @@ public class App : Application
     private static string GetRequestedPath(IEnumerable<string> arguments) =>
         arguments?.FirstOrDefault(argument => !argument.StartsWith("--", StringComparison.Ordinal));
 
-    private MainWindow CreateWindow(string requestedPath = null, bool show = true, Window sourceWindow = null)
+    private MainWindow CreateWindow(
+        string requestedPath = null,
+        bool show = true,
+        Window sourceWindow = null,
+        bool openFromClipboard = false)
     {
         var settings = m_settingsService.Load();
         var viewModel = new MainWindowViewModel(
@@ -89,7 +93,7 @@ public class App : Application
             m_previewService,
             m_fileOperationService,
             m_settingsService);
-        var window = new MainWindow(viewModel, requestedPath)
+        var window = new MainWindow(viewModel, requestedPath, openFromClipboard)
         {
             Icon = IconLoader.LoadWindowIcon(),
             Width = GetWindowDimension(

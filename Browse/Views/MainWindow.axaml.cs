@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private const double ColumnWidth = 270;
     private static readonly DataFormat<string> FavoriteDataFormat = DataFormat.CreateStringApplicationFormat("Browse.Favorite");
     private readonly string m_requestedPath;
+    private readonly bool m_openFromClipboard;
     private Point? m_dragStart;
     private ListBox m_dragSource;
     private BrowserItem[] m_dragItems;
@@ -62,9 +63,10 @@ public partial class MainWindow : Window
     {
     }
 
-    public MainWindow(MainWindowViewModel viewModel, string requestedPath = null)
+    public MainWindow(MainWindowViewModel viewModel, string requestedPath = null, bool openFromClipboard = false)
     {
         m_requestedPath = requestedPath;
+        m_openFromClipboard = openFromClipboard;
         DataContext = viewModel;
         InitializeComponent();
         AddHandler(PointerPressedEvent, OnColumnPointerPressed, RoutingStrategies.Tunnel, true);
@@ -82,8 +84,41 @@ public partial class MainWindow : Window
 
     private async void OnOpened(object sender, EventArgs e)
     {
-        await ViewModel.InitializeAsync(m_requestedPath);
+        var requestedPath = m_openFromClipboard
+            ? await ReadClipboardNavigationPathAsync() ?? m_requestedPath
+            : m_requestedPath;
+        await ViewModel.InitializeAsync(requestedPath);
         FocusFirstColumnItem();
+    }
+
+    private async Task<string> ReadClipboardNavigationPathAsync()
+    {
+        try
+        {
+            var filePaths = Clipboard == null
+                ? []
+                : (await Clipboard.TryGetFilesAsync())?
+                    .Select(item => item.TryGetLocalPath())
+                    .Where(path => path != null)
+                    .ToArray() ?? [];
+            var text = Clipboard == null ? null : await Clipboard.TryGetTextAsync();
+            return GetClipboardNavigationPath(filePaths, text);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    internal static string GetClipboardNavigationPath(IEnumerable<string> filePaths, string text)
+    {
+        var storagePath = filePaths?.FirstOrDefault(path => File.Exists(path) || Directory.Exists(path));
+        if (storagePath != null)
+            return storagePath;
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        var textPath = MainWindowViewModel.NormalizePathInput(text);
+        return File.Exists(textPath) || Directory.Exists(textPath) ? textPath : null;
     }
 
     private async void OnSidebarClicked(object sender, RoutedEventArgs e)
