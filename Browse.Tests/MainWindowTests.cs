@@ -52,4 +52,20 @@ public sealed class MainWindowTests
     {
         Assert.That(MainWindow.ShouldRemoveFavoriteAfterDrag(result, outside, canceled), Is.EqualTo(expected));
     }
+
+    [TestCase(20, 100, 12, 1, 31)]
+    [TestCase(20, 100, 12, -1, 9)]
+    [TestCase(95, 100, 12, 1, 99)]
+    [TestCase(3, 100, 12, -1, 0)]
+    public void CheckPageNavigationSelectsItemOneViewportAway(
+        int currentIndex,
+        int itemCount,
+        int visibleItemCount,
+        int direction,
+        int expected)
+    {
+        Assert.That(
+            MainWindow.GetPageTargetIndex(currentIndex, itemCount, visibleItemCount, direction),
+            Is.EqualTo(expected));
+    }
 }

@@ -481,6 +481,11 @@ public partial class MainWindow : Window
             MoveColumnSelection(e.Key == Key.Up ? -1 : 1);
             e.Handled = true;
         }
+        else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key is Key.PageUp or Key.PageDown)
+        {
+            MoveColumnSelectionByPage(e.Key == Key.PageUp ? -1 : 1);
+            e.Handled = true;
+        }
         else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key is Key.Home or Key.End)
         {
             MoveColumnSelectionToBoundary(e.Key == Key.End);
@@ -636,6 +641,28 @@ public partial class MainWindow : Window
         if (m_focusedColumn == null || m_focusedColumn.ItemsView.Count == 0)
             return;
         SelectColumnIndex(end ? m_focusedColumn.ItemsView.Count - 1 : 0);
+    }
+
+    private void MoveColumnSelectionByPage(int direction)
+    {
+        if (m_focusedColumn == null || m_focusedColumn.ItemsView.Count == 0)
+            return;
+        var visibleItemCount = m_focusedColumn
+            .GetVisualDescendants()
+            .OfType<ListBoxItem>()
+            .Count();
+        SelectColumnIndex(GetPageTargetIndex(
+            m_focusedColumn.SelectedIndex,
+            m_focusedColumn.ItemsView.Count,
+            visibleItemCount,
+            direction));
+    }
+
+    internal static int GetPageTargetIndex(int currentIndex, int itemCount, int visibleItemCount, int direction)
+    {
+        var pageSize = Math.Max(1, visibleItemCount - 1);
+        var startIndex = currentIndex < 0 ? 0 : currentIndex;
+        return Math.Clamp(startIndex + direction * pageSize, 0, itemCount - 1);
     }
 
     private void SelectColumnIndex(int index)
