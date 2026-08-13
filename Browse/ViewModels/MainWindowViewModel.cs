@@ -470,7 +470,20 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         StatusText = $"{m_clipboardItems.Count:N0} item(s) ready to {(cut ? "move" : "copy")}.";
     }
 
-    public Task PasteAsync() => PasteAsync(new DirectoryInfo(CurrentPath));
+    public Task PasteAsync()
+    {
+        var destination = new DirectoryInfo(CurrentPath);
+        if (m_clipboardItems.Count == 1 &&
+            m_clipboardItems[0].IsDirectory &&
+            string.Equals(
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(m_clipboardItems[0].FullPath)),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(destination.FullName)),
+                OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase))
+        {
+            destination = new DirectoryInfo(Path.GetDirectoryName(m_clipboardItems[0].FullPath)!);
+        }
+        return PasteAsync(destination);
+    }
 
     public async Task PasteAsync(DirectoryInfo destination)
     {

@@ -32,13 +32,17 @@ public sealed class FileOperationService
     public Task CopyAsync(IReadOnlyList<BrowserItem> items, DirectoryInfo destination, bool move, CancellationToken cancellationToken = default) =>
         Task.Run(() =>
         {
+            foreach (var item in items.Where(item => item.IsDirectory))
+            {
+                if (IsSameOrDescendant(destination.FullName, item.FullPath))
+                    throw new IOException($"Cannot {(move ? "move" : "copy")} a folder into itself.");
+            }
+
             destination.Create();
             foreach (var item in items)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var requestedPath = Path.Combine(destination.FullName, item.Name);
-                if (PathsEqual(item.FullPath, requestedPath))
-                    continue;
                 var targetPath = GetAvailablePath(requestedPath);
                 if (item.IsDirectory)
                 {
@@ -464,5 +468,18 @@ public sealed class FileOperationService
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
             comparison);
+    }
+
+    private static bool IsSameOrDescendant(string path, string possibleAncestor)
+    {
+        var comparison = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+        var ancestor = Path.TrimEndingDirectorySeparator(Path.GetFullPath(possibleAncestor));
+        if (string.Equals(fullPath, ancestor, comparison))
+            return true;
+        var prefix = ancestor.EndsWith(Path.DirectorySeparatorChar)
+            ? ancestor
+            : ancestor + Path.DirectorySeparatorChar;
+        return fullPath.StartsWith(prefix, comparison);
     }
 }

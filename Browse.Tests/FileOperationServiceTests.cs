@@ -102,7 +102,7 @@ public sealed class FileOperationServiceTests
     }
 
     [Test]
-    public async Task CheckCopyIntoOwnFolderIsIgnored()
+    public async Task CheckCopyBesideOriginalAddsNumberedSuffix()
     {
         using var temp = new TempDirectory();
         var root = (DirectoryInfo)temp;
@@ -110,8 +110,23 @@ public sealed class FileOperationServiceTests
 
         await new FileOperationService().CopyAsync([new BrowserItem(folder)], root, false);
 
-        Assert.That(Directory.Exists(Path.Combine(temp.FullName, "folder (2)")), Is.False);
+        Assert.That(Directory.Exists(Path.Combine(temp.FullName, "folder (2)")), Is.True);
         Assert.That(folder.Exists, Is.True);
+    }
+
+    [Test]
+    public void CheckCopyIntoOwnDescendantIsRejectedBeforeCreatingDestination()
+    {
+        using var temp = new TempDirectory();
+        var folder = ((DirectoryInfo)temp).CreateSubdirectory("folder");
+        File.WriteAllText(Path.Combine(folder.FullName, "contents.txt"), "contents");
+        var destination = new DirectoryInfo(Path.Combine(folder.FullName, "nested"));
+
+        Assert.That(
+            async () => await new FileOperationService().CopyAsync([new BrowserItem(folder)], destination, false),
+            Throws.TypeOf<IOException>()
+                .With.Message.EqualTo("Cannot copy a folder into itself."));
+        Assert.That(destination.Exists, Is.False);
     }
 
     [Test]

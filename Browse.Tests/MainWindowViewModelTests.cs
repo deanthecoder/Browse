@@ -175,6 +175,27 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public async Task CheckCopyAndPasteSelectedFolderDuplicatesBesideOriginal()
+    {
+        using var temp = new TempDirectory();
+        var folder = ((DirectoryInfo)temp).CreateSubdirectory("folder");
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(),
+            new PreviewService(),
+            new FileOperationService(),
+            new SettingsService());
+        await viewModel.NavigateToAsync(temp.FullName);
+        var column = viewModel.Columns.Single();
+        var item = column.Items.Single(candidate => candidate.FullPath == folder.FullName);
+        await viewModel.SelectAsync(column, [item]);
+
+        viewModel.CopySelection(false);
+        await viewModel.PasteAsync();
+
+        Assert.That(Directory.Exists(Path.Combine(temp.FullName, "folder (2)")), Is.True);
+    }
+
+    [Test]
     public void CheckColumnRefreshReplacesSelectedItemWhenAliasChanges()
     {
         using var temp = new TempDirectory();
