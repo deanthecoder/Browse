@@ -28,7 +28,7 @@ namespace Browse.Services.Previews;
 public sealed class ImagePreviewProvider : IPreviewProvider
 {
     private const int MaxPreviewDimension = 700;
-    private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"
     };
@@ -38,7 +38,7 @@ public sealed class ImagePreviewProvider : IPreviewProvider
 
     public async Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken)
     {
-        var decoded = await Task.Run(() => Decode((FileInfo)item.Info, item.EffectiveExtension), cancellationToken);
+        var decoded = await Task.Run(() => Decode((FileInfo)item.Info, item.EffectiveExtension, MaxPreviewDimension), cancellationToken);
         if (cancellationToken.IsCancellationRequested)
         {
             decoded.Bitmap.Dispose();
@@ -49,13 +49,18 @@ public sealed class ImagePreviewProvider : IPreviewProvider
         return new ImagePreviewContent(item.Name, item.FullPath, details, decoded.Bitmap);
     }
 
-    private static DecodedImage Decode(FileInfo file, string extension)
+    internal static Bitmap DecodeFullSize(FileInfo file, string extension) =>
+        Decode(file, extension, int.MaxValue).Bitmap;
+
+    private static DecodedImage Decode(FileInfo file, string extension, int maximumDimension)
     {
         if (!extension.Equals(".tif", StringComparison.OrdinalIgnoreCase) &&
             !extension.Equals(".tiff", StringComparison.OrdinalIgnoreCase))
         {
             using var stream = file.OpenRead();
-            var decodedBitmap = Bitmap.DecodeToHeight(stream, MaxPreviewDimension, BitmapInterpolationMode.MediumQuality);
+            var decodedBitmap = maximumDimension == int.MaxValue
+                ? new Bitmap(stream)
+                : Bitmap.DecodeToHeight(stream, maximumDimension, BitmapInterpolationMode.MediumQuality);
             var metadata = ReadMetadata(file, extension);
             return new DecodedImage(
                 decodedBitmap,
@@ -71,10 +76,10 @@ public sealed class ImagePreviewProvider : IPreviewProvider
         var samplesPerPixel = tiff.GetFieldDefaulted(TiffTag.SAMPLESPERPIXEL)[0].ToInt();
         var photometric = (Photometric)tiff.GetFieldDefaulted(TiffTag.PHOTOMETRIC)[0].ToInt();
         var planarConfig = (PlanarConfig)tiff.GetFieldDefaulted(TiffTag.PLANARCONFIG)[0].ToInt();
-        var scale = Math.Min(1.0, (double)MaxPreviewDimension / Math.Max(width, height));
+        var scale = Math.Min(1.0, (double)maximumDimension / Math.Max(width, height));
         var previewWidth = Math.Max(1, (int)Math.Round(width * scale));
         var previewHeight = Math.Max(1, (int)Math.Round(height * scale));
-        var pixels = new byte[previewWidth * previewHeight * 4];
+        var pixels = new byte[checked(previewWidth * previewHeight * 4)];
         if (bitsPerSample == 8 && planarConfig == PlanarConfig.CONTIG &&
             (photometric == Photometric.RGB || photometric is Photometric.MINISBLACK or Photometric.MINISWHITE))
         {

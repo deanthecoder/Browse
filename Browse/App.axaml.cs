@@ -28,6 +28,7 @@ public class App : Application
     private readonly DirectoryContentService m_directoryService = new();
     private readonly PreviewService m_previewService = new();
     private readonly FileOperationService m_fileOperationService = new();
+    private readonly ClipboardImageService m_clipboardImageService = new();
     private readonly SettingsService m_settingsService = new();
     private TrayIcon m_trayIcon;
     private WindowsGlobalHotKeyHost m_hotKeyHost;
@@ -65,6 +66,7 @@ public class App : Application
             {
                 m_hotKeyHost?.Close();
                 m_launchServer?.Dispose();
+                m_clipboardImageService.Dispose();
                 TrayIcon.SetIcons(this, null);
                 m_trayIcon?.Dispose();
             };
@@ -102,7 +104,7 @@ public class App : Application
             m_previewService,
             m_fileOperationService,
             m_settingsService);
-        var window = new MainWindow(viewModel, requestedPath, openFromClipboard)
+        var window = new MainWindow(viewModel, requestedPath, openFromClipboard, m_clipboardImageService)
         {
             Icon = IconLoader.LoadWindowIcon(),
             Width = GetWindowDimension(

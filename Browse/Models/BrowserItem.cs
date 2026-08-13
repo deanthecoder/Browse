@@ -11,6 +11,7 @@
 namespace Browse.Models;
 
 using Avalonia.Media;
+using Browse.Services;
 using Material.Icons;
 
 /// <summary>
@@ -54,6 +55,7 @@ public sealed class BrowserItem
     public bool IsDirectory { get; }
     public string EffectiveExtension { get; }
     public bool IsZipArchive => !IsDirectory && EffectiveExtension.Equals(".zip", StringComparison.OrdinalIgnoreCase);
+    public bool CanCopyAsImage => ClipboardImageService.CanCopy(this);
     public bool IsDotFolder { get; }
     public bool IsHidden { get; }
     public bool IsUnavailable { get; }

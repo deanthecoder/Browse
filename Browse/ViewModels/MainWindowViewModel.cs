@@ -100,6 +100,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         private set => SetField(ref m_statusText, value);
     }
 
+    public void ReportStatus(string text) => StatusText = text;
+
     public bool IsGoToVisible
     {
         get => m_isGoToVisible;
