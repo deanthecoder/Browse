@@ -117,4 +117,14 @@ public sealed class MainWindowTests
     {
         Assert.That(ImagePreviewViewer.ApplyMagnification(zoom, magnification), Is.EqualTo(expected));
     }
+
+    [TestCase(0.5, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality)]
+    [TestCase(1.0, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality)]
+    [TestCase(1.01, Avalonia.Media.Imaging.BitmapInterpolationMode.None)]
+    public void CheckImageZoomUsesCrispUpscalingAndSmoothDownscaling(
+        double zoom,
+        Avalonia.Media.Imaging.BitmapInterpolationMode expected)
+    {
+        Assert.That(ImagePreviewViewer.GetInterpolationMode(zoom), Is.EqualTo(expected));
+    }
 }

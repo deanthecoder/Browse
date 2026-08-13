@@ -106,6 +106,9 @@ internal sealed class ImagePreviewViewer : UserControl, IDisposable
     internal static double ApplyMagnification(double zoom, double magnification) =>
         Math.Clamp(zoom * Math.Max(0.1, 1 + magnification), MinimumZoom, MaximumZoom);
 
+    internal static BitmapInterpolationMode GetInterpolationMode(double zoom) =>
+        zoom > 1 ? BitmapInterpolationMode.None : BitmapInterpolationMode.HighQuality;
+
     private void ZoomToFit() => SetZoom(GetFitZoom(m_bitmap.PixelSize, m_scrollViewer.Viewport), true);
 
     private void SetZoom(double zoom, bool fitToWindow, Point? anchor = null)
@@ -115,6 +118,7 @@ internal sealed class ImagePreviewViewer : UserControl, IDisposable
         m_fitToWindow = fitToWindow;
         m_image.Width = m_bitmap.PixelSize.Width * m_zoom;
         m_image.Height = m_bitmap.PixelSize.Height * m_zoom;
+        RenderOptions.SetBitmapInterpolationMode(m_image, GetInterpolationMode(m_zoom));
         m_zoomLabel.Text = $"{m_zoom:P0}";
         if (anchor == null || previousZoom <= 0)
         {
