@@ -196,6 +196,27 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public async Task CheckDuplicateSelectionCopiesItemsBesideOriginals()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "notes.txt"));
+        await File.WriteAllTextAsync(file.FullName, "notes");
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(),
+            new PreviewService(),
+            new FileOperationService(),
+            new SettingsService());
+        await viewModel.NavigateToAsync(temp.FullName);
+        var column = viewModel.Columns.Single();
+        var item = column.Items.Single(candidate => candidate.FullPath == file.FullName);
+        await viewModel.SelectAsync(column, [item]);
+
+        await viewModel.DuplicateSelectionAsync();
+
+        Assert.That(File.ReadAllText(Path.Combine(temp.FullName, "notes (2).txt")), Is.EqualTo("notes"));
+    }
+
+    [Test]
     public void CheckColumnRefreshReplacesSelectedItemWhenAliasChanges()
     {
         using var temp = new TempDirectory();

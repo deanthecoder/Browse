@@ -508,6 +508,28 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    public async Task DuplicateSelectionAsync()
+    {
+        if (m_selectedItems.Count == 0)
+            return;
+        StatusText = "Duplicating…";
+        try
+        {
+            foreach (var group in m_selectedItems.GroupBy(item => Path.GetDirectoryName(item.FullPath)!))
+            {
+                var destination = new DirectoryInfo(group.Key);
+                await m_fileOperationService.CopyAsync(group.ToArray(), destination, false);
+                m_directoryService.Invalidate(destination);
+            }
+            await ReloadCurrentAsync();
+            StatusText = "Duplicate complete.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = ex.Message;
+        }
+    }
+
     public async Task ImportDroppedPathsAsync(IEnumerable<string> paths, DirectoryInfo destination, bool move)
     {
         var items = paths

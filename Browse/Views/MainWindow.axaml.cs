@@ -433,6 +433,11 @@ public partial class MainWindow : Window
             await CopySelectionAsync(false);
             e.Handled = true;
         }
+        else if (!hasModalOverlay && primaryModifier && e.Key == Key.D)
+        {
+            await ViewModel.DuplicateSelectionAsync();
+            e.Handled = true;
+        }
         else if (!hasModalOverlay && primaryModifier && e.Key == Key.X)
         {
             await CopySelectionAsync(true);
