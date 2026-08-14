@@ -47,6 +47,8 @@ public partial class MainWindow : Window
     private string[] m_externalClipboardPaths = [];
     private DirectoryInfo m_contextDestination;
     private bool m_suppressSelectionChanged;
+    private int? m_selectionAnchorIndex;
+    private int? m_selectionActiveIndex;
     private string m_typeSearch = string.Empty;
     private DateTime m_lastTypeSearch;
     private Point? m_favoriteDragStart;
@@ -165,6 +167,8 @@ public partial class MainWindow : Window
         }
         var previousColumnCount = ViewModel.Columns.Count;
         var selection = listBox.SelectedItems.Cast<BrowserItem>().ToArray();
+        m_selectionAnchorIndex = listBox.SelectedIndex;
+        m_selectionActiveIndex = listBox.SelectedIndex;
         await ViewModel.SelectAsync(column, selection);
         if (ViewModel.Columns.Count > previousColumnCount)
             Dispatcher.UIThread.Post(BringLastColumnIntoViewIfNeeded, DispatcherPriority.Background);
@@ -593,6 +597,11 @@ public partial class MainWindow : Window
             MoveColumnSelection(e.Key == Key.Up ? -1 : 1);
             e.Handled = true;
         }
+        else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.Shift && e.Key is Key.Up or Key.Down)
+        {
+            await ExtendColumnSelectionAsync(e.Key == Key.Up ? -1 : 1);
+            e.Handled = true;
+        }
         else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key is Key.PageUp or Key.PageDown)
         {
             MoveColumnSelectionByPage(e.Key == Key.PageUp ? -1 : 1);
@@ -751,6 +760,40 @@ public partial class MainWindow : Window
         var currentIndex = m_focusedColumn.SelectedIndex;
         var targetIndex = Math.Clamp(currentIndex < 0 ? 0 : currentIndex + direction, 0, m_focusedColumn.ItemsView.Count - 1);
         SelectColumnIndex(targetIndex);
+    }
+
+    private async Task ExtendColumnSelectionAsync(int direction)
+    {
+        if (m_focusedColumn?.DataContext is not FolderColumnViewModel column || m_focusedColumn.ItemsView.Count == 0)
+            return;
+        var anchorIndex = m_selectionAnchorIndex ?? m_focusedColumn.SelectedIndex;
+        if (anchorIndex < 0)
+            anchorIndex = 0;
+        var activeIndex = m_selectionActiveIndex ?? m_focusedColumn.SelectedIndex;
+        if (activeIndex < 0)
+            activeIndex = anchorIndex;
+        activeIndex = Math.Clamp(activeIndex + direction, 0, m_focusedColumn.ItemsView.Count - 1);
+        m_selectionAnchorIndex = anchorIndex;
+        m_selectionActiveIndex = activeIndex;
+
+        var first = Math.Min(anchorIndex, activeIndex);
+        var last = Math.Max(anchorIndex, activeIndex);
+        var items = Enumerable.Range(first, last - first + 1)
+            .Select(index => (BrowserItem)m_focusedColumn.ItemsView[index])
+            .ToArray();
+        m_suppressSelectionChanged = true;
+        try
+        {
+            m_focusedColumn.SelectedItems.Clear();
+            foreach (var item in items)
+                m_focusedColumn.SelectedItems.Add(item);
+        }
+        finally
+        {
+            m_suppressSelectionChanged = false;
+        }
+        m_focusedColumn.ScrollIntoView(items[^1]);
+        await ViewModel.SelectAsync(column, items);
     }
 
     private void MoveColumnSelectionToBoundary(bool end)
