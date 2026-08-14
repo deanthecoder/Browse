@@ -141,6 +141,8 @@ internal sealed class ImagePreviewViewer : UserControl, IDisposable
 
     private void OnPointerWheelChanged(object sender, PointerWheelEventArgs e)
     {
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            return;
         var factor = Math.Pow(1.15, e.Delta.Y);
         SetZoom(m_zoom * factor, false, e.GetPosition(m_scrollViewer));
         e.Handled = true;
