@@ -226,6 +226,13 @@
               <ScrollViewer HorizontalScrollBarVisibility="Auto" IsVisible="{Binding IsArchivePreview}">
                 <TextBlock Text="{Binding PreviewContent}" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="10" />
               </ScrollViewer>
+              <TextBlock Text="Open the expanded preview to preview this archive item."
+                         Classes="muted"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         TextAlignment="Center"
+                         TextWrapping="Wrap"
+                         IsVisible="{Binding IsArchiveEntryPreview}" />
               <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFolderPreview}">
                 <icons:MaterialIcon Kind="Folder" Width="56" Height="56" Foreground="#8DBCEB" HorizontalAlignment="Center" />
                 <Button Content="Calculate size" Click="OnCalculateSizeClicked" IsVisible="{Binding CanCalculateFolderSize}" />

@@ -157,19 +157,34 @@ public partial class PreviewWindow : Window
     {
         if (m_viewModel == null)
             return CreateMessage("No larger preview is available for this item.");
-        if (m_viewModel.Preview is ImagePreviewContent image)
+        var preview = m_viewModel.Preview;
+        var item = m_viewModel.SelectedItems.Count == 1 ? m_viewModel.SelectedItems[0] : null;
+        var ownsPreviewImage = false;
+        if (preview is ArchiveEntryPreviewContent archiveEntry)
         {
-            var item = m_viewModel.SelectedItems.Count == 1 ? m_viewModel.SelectedItems[0] : null;
+            (preview, item) = await m_viewModel.CreateArchiveEntryPreviewAsync(archiveEntry, cancellationToken);
+            ownsPreviewImage = preview is ImagePreviewContent;
+        }
+        if (preview is ImagePreviewContent image)
+        {
             if (item != null && ImagePreviewProvider.Extensions.Contains(item.EffectiveExtension))
             {
-                var bitmap = await Task.Run(
-                    () => ImagePreviewProvider.DecodeFullSize((FileInfo)item.Info, item.EffectiveExtension),
-                    cancellationToken);
-                return new ImagePreviewViewer(bitmap, true);
+                try
+                {
+                    var bitmap = await Task.Run(
+                        () => ImagePreviewProvider.DecodeFullSize((FileInfo)item.Info, item.EffectiveExtension),
+                        cancellationToken);
+                    return new ImagePreviewViewer(bitmap, true);
+                }
+                finally
+                {
+                    if (ownsPreviewImage)
+                        image.Dispose();
+                }
             }
-            return new ImagePreviewViewer(image.Image, false);
+            return new ImagePreviewViewer(image.Image, ownsPreviewImage);
         }
-        if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Hex } hex)
+        if (preview is TextPreviewContent { Mode: TextPreviewMode.Hex } hex)
         {
             var text = await BinaryPreviewProvider.ReadHexDumpAsync(
                 new FileInfo(hex.Path),
@@ -187,14 +202,14 @@ public partial class PreviewWindow : Window
                 Foreground = Brush.Parse("#D4D4D4")
             };
         }
-        if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Html } html)
+        if (preview is TextPreviewContent { Mode: TextPreviewMode.Html } html)
         {
             var text = await ReadExpandedTextAsync(html, cancellationToken);
             return m_showSource
                 ? await CreateSourcePreviewAsync(html, text, cancellationToken)
                 : CreateHtmlPreview(text);
         }
-        if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Plain } plainText)
+        if (preview is TextPreviewContent { Mode: TextPreviewMode.Plain } plainText)
         {
             var text = await ReadExpandedTextAsync(plainText, cancellationToken);
             return new TextBox
@@ -208,7 +223,7 @@ public partial class PreviewWindow : Window
                 BorderThickness = new Thickness(0)
             };
         }
-        if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Code } code)
+        if (preview is TextPreviewContent { Mode: TextPreviewMode.Code } code)
         {
             var text = await ReadExpandedTextAsync(code, cancellationToken);
             var colorizer = await Task.Run(
@@ -217,7 +232,7 @@ public partial class PreviewWindow : Window
             cancellationToken.ThrowIfCancellationRequested();
             return CreateCodePreview(code, text, colorizer);
         }
-        if (m_viewModel.Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown } markdown)
+        if (preview is TextPreviewContent { Mode: TextPreviewMode.Markdown } markdown)
         {
             var text = await ReadExpandedTextAsync(markdown, cancellationToken);
             if (m_showSource)
@@ -232,7 +247,7 @@ public partial class PreviewWindow : Window
                 }
             };
         }
-        if (m_viewModel.Preview is ArchivePreviewContent archive)
+        if (preview is ArchivePreviewContent archive)
         {
             return new ScrollViewer
             {

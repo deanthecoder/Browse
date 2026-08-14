@@ -63,6 +63,15 @@ public sealed class ArchiveContentService : IDisposable
         return staging.EnumerateFileSystemInfos().Select(item => item.FullName).ToArray();
     }
 
+    /// <summary>Extracts one archive file to Browse's managed temporary workspace for previewing.</summary>
+    public async Task<FileInfo> ExtractPreviewFileAsync(BrowserItem item, CancellationToken cancellationToken = default)
+    {
+        if (!item.IsArchiveEntry || item.IsDirectory)
+            throw new ArgumentException("The item must be a file contained in an archive.", nameof(item));
+        var paths = await CreateDragFilesAsync([item], cancellationToken);
+        return new FileInfo(paths.Single());
+    }
+
     private static void ExtractItem(ZipArchive zip, BrowserItem item, DirectoryInfo destination, CancellationToken cancellationToken)
     {
         var prefix = NormalizeFolderPath(item.ArchiveEntryPath);

@@ -49,6 +49,19 @@ public sealed class ArchiveContentServiceTests
         });
     }
 
+    [Test]
+    public async Task CheckArchiveFileCanBeExtractedForPreview()
+    {
+        using var temp = new TempDirectory();
+        var archive = CreateArchive(temp, ("notes.txt", "preview text"));
+        using var service = new ArchiveContentService();
+        var item = (await service.GetItemsAsync(archive, string.Empty)).Single();
+
+        var extracted = await service.ExtractPreviewFileAsync(item);
+
+        Assert.That(File.ReadAllText(extracted.FullName), Is.EqualTo("preview text"));
+    }
+
     private static FileInfo CreateArchive(DirectoryInfo root, params (string Path, string Contents)[] files)
     {
         var archive = new FileInfo(Path.Combine(root.FullName, "sample.zip"));

@@ -105,6 +105,16 @@ public sealed class ArchivePreviewContent(string name, string path, string detai
 }
 
 /// <summary>
+/// Represents a file contained by an archive before it is extracted for an expanded preview.
+/// </summary>
+public sealed class ArchiveEntryPreviewContent(BrowserItem item)
+    : PreviewContent(item.Name, item.FullPath, item.ArchiveSizeDetails)
+{
+    public BrowserItem Item { get; } = item;
+    public override bool CanExpand => true;
+}
+
+/// <summary>
 /// Owns a decoded, size-bounded image preview.
 /// </summary>
 /// <remarks>

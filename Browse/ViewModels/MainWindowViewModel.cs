@@ -202,6 +202,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(IsCodePreview));
             OnPropertyChanged(nameof(IsMarkdownPreview));
             OnPropertyChanged(nameof(IsArchivePreview));
+            OnPropertyChanged(nameof(IsArchiveEntryPreview));
             OnPropertyChanged(nameof(IsImagePreview));
             OnPropertyChanged(nameof(IsFolderPreview));
             OnPropertyChanged(nameof(IsNoPreview));
@@ -252,10 +253,20 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public bool IsCodePreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Code or TextPreviewMode.Hex };
     public bool IsMarkdownPreview => Preview is TextPreviewContent { Mode: TextPreviewMode.Markdown };
     public bool IsArchivePreview => Preview is ArchivePreviewContent;
+    public bool IsArchiveEntryPreview => Preview is ArchiveEntryPreviewContent;
     public bool IsImagePreview => Preview is ImagePreviewContent;
     public bool IsFolderPreview => Preview is FolderPreviewContent;
     public bool IsNoPreview => HasSelection && Preview is EmptyPreviewContent or MultiplePreviewContent;
     public bool CanExpandPreview => Preview.CanExpand;
+
+    public async Task<(PreviewContent Preview, BrowserItem Item)> CreateArchiveEntryPreviewAsync(
+        ArchiveEntryPreviewContent preview,
+        CancellationToken cancellationToken)
+    {
+        var extractedFile = await m_archiveContentService.ExtractPreviewFileAsync(preview.Item, cancellationToken);
+        var item = new BrowserItem(extractedFile);
+        return (await m_previewService.CreateAsync([item], cancellationToken), item);
+    }
 
     public string FolderSize
     {
@@ -1025,7 +1036,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             if (shouldDelay)
                 await Task.Delay(PreviewDelay, cancellationToken);
             var preview = selection.Length == 1 && selection[0].IsArchiveEntry
-                ? new EmptyPreviewContent(selection[0].Name, selection[0].FullPath, selection[0].ArchiveSizeDetails)
+                ? selection[0].IsDirectory
+                    ? new EmptyPreviewContent(selection[0].Name, selection[0].FullPath, selection[0].ArchiveSizeDetails)
+                    : new ArchiveEntryPreviewContent(selection[0])
                 : await m_previewService.CreateAsync(selection, cancellationToken);
             if (cancellationToken.IsCancellationRequested)
             {
