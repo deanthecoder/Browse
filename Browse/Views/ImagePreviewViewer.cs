@@ -12,6 +12,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -60,7 +61,7 @@ internal sealed class ImagePreviewViewer : UserControl, IDisposable
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             AllowAutoHide = false
         };
-        m_scrollViewer.PointerWheelChanged += OnPointerWheelChanged;
+        m_scrollViewer.AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Tunnel);
         Gestures.AddPointerTouchPadGestureMagnifyHandler(m_scrollViewer, OnTouchPadMagnify);
         m_scrollViewer.GestureRecognizers.Add(new PinchGestureRecognizer());
         Gestures.AddPinchHandler(m_scrollViewer, OnPinch);
