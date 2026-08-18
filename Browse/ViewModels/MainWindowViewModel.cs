@@ -263,9 +263,16 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ArchiveEntryPreviewContent preview,
         CancellationToken cancellationToken)
     {
-        var extractedFile = await m_archiveContentService.ExtractPreviewFileAsync(preview.Item, cancellationToken);
-        var item = new BrowserItem(extractedFile);
+        var item = await ExtractArchiveEntryForPreviewAsync(preview, cancellationToken);
         return (await m_previewService.CreateAsync([item], cancellationToken), item);
+    }
+
+    public async Task<BrowserItem> ExtractArchiveEntryForPreviewAsync(
+        ArchiveEntryPreviewContent preview,
+        CancellationToken cancellationToken)
+    {
+        var extractedFile = await m_archiveContentService.ExtractPreviewFileAsync(preview.Item, cancellationToken);
+        return new BrowserItem(extractedFile);
     }
 
     public string FolderSize

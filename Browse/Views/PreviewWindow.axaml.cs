@@ -41,6 +41,7 @@ public partial class PreviewWindow : Window
     private CancellationTokenSource m_previewCancellation = new();
     private bool m_updateQueued;
     private bool m_showSource;
+    private bool m_showBinary;
 
     public PreviewWindow()
     {
@@ -60,6 +61,7 @@ public partial class PreviewWindow : Window
     {
         PreviewHost.Content = CreateMessage("Loading preview…");
         UpdateSourceToggle();
+        UpdateBinaryToggle();
         QueuePreviewUpdate();
     }
 
@@ -71,7 +73,9 @@ public partial class PreviewWindow : Window
         if (m_viewModel != null)
             m_viewModel.PropertyChanged += OnViewModelPropertyChanged;
         m_showSource = false;
+        m_showBinary = false;
         UpdateSourceToggle();
+        UpdateBinaryToggle();
         if (IsVisible)
             QueuePreviewUpdate();
     }
@@ -81,7 +85,9 @@ public partial class PreviewWindow : Window
         if (e.PropertyName == nameof(MainWindowViewModel.Preview))
         {
             m_showSource = false;
+            m_showBinary = false;
             UpdateSourceToggle();
+            UpdateBinaryToggle();
             QueuePreviewUpdate();
         }
     }
@@ -89,7 +95,18 @@ public partial class PreviewWindow : Window
     private void OnSourceToggleClicked(object sender, RoutedEventArgs e)
     {
         m_showSource = !m_showSource;
+        m_showBinary = false;
         UpdateSourceToggle();
+        UpdateBinaryToggle();
+        QueuePreviewUpdate();
+    }
+
+    private void OnBinaryToggleClicked(object sender, RoutedEventArgs e)
+    {
+        m_showBinary = !m_showBinary;
+        m_showSource = false;
+        UpdateSourceToggle();
+        UpdateBinaryToggle();
         QueuePreviewUpdate();
     }
 
@@ -100,10 +117,22 @@ public partial class PreviewWindow : Window
         SourceToggleButton.IsVisible = m_viewModel?.Preview is TextPreviewContent
         {
             Mode: TextPreviewMode.Html or TextPreviewMode.Markdown
-        };
+        } && !m_showBinary;
         ShowSourceIcon.IsVisible = !m_showSource;
         ShowRenderedIcon.IsVisible = m_showSource;
         ToolTip.SetTip(SourceToggleButton, m_showSource ? "Show rendered preview" : "Show source");
+    }
+
+    private void UpdateBinaryToggle()
+    {
+        if (BinaryToggleButton == null)
+            return;
+        var item = m_viewModel?.SelectedItems.Count == 1 ? m_viewModel.SelectedItems[0] : null;
+        var canShowBinary = item != null && !item.IsDirectory &&
+                            m_viewModel.Preview is not TextPreviewContent { Mode: TextPreviewMode.Hex };
+        BinaryToggleButton.IsVisible = canShowBinary;
+        BinaryToggleButton.Content = m_showBinary ? "Preview" : "HEX";
+        ToolTip.SetTip(BinaryToggleButton, m_showBinary ? "Show normal preview" : "Show binary preview");
     }
 
     private void QueuePreviewUpdate()
@@ -160,9 +189,16 @@ public partial class PreviewWindow : Window
         var preview = m_viewModel.Preview;
         var item = m_viewModel.SelectedItems.Count == 1 ? m_viewModel.SelectedItems[0] : null;
         var ownsPreviewImage = false;
-        if (preview is ArchiveEntryPreviewContent archiveEntry)
+        if (m_showBinary)
         {
-            (preview, item) = await m_viewModel.CreateArchiveEntryPreviewAsync(archiveEntry, cancellationToken);
+            if (preview is ArchiveEntryPreviewContent archiveEntry)
+                item = await m_viewModel.ExtractArchiveEntryForPreviewAsync(archiveEntry, cancellationToken);
+            if (item?.Info is FileInfo file)
+                return await CreateBinaryPreviewAsync(file, cancellationToken);
+        }
+        if (preview is ArchiveEntryPreviewContent archiveEntryPreview)
+        {
+            (preview, item) = await m_viewModel.CreateArchiveEntryPreviewAsync(archiveEntryPreview, cancellationToken);
             ownsPreviewImage = preview is ImagePreviewContent;
         }
         if (preview is ImagePreviewContent image)
@@ -262,6 +298,25 @@ public partial class PreviewWindow : Window
             };
         }
         return CreateMessage("No larger preview is available for this item.");
+    }
+
+    private static async Task<TextEditor> CreateBinaryPreviewAsync(FileInfo file, CancellationToken cancellationToken)
+    {
+        var text = await BinaryPreviewProvider.ReadHexDumpAsync(
+            file,
+            BinaryPreviewProvider.MaxExpandedPreviewBytes,
+            cancellationToken);
+        return new TextEditor
+        {
+            Document = new TextDocument(text),
+            IsReadOnly = true,
+            WordWrap = false,
+            ShowLineNumbers = false,
+            FontFamily = new FontFamily("Cascadia Code,Consolas,Menlo,Monospace"),
+            FontSize = 13,
+            Background = Brush.Parse("#1E1E1E"),
+            Foreground = Brush.Parse("#D4D4D4")
+        };
     }
 
     private static async Task<TextEditor> CreateSourcePreviewAsync(
