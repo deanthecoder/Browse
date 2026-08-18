@@ -36,12 +36,51 @@ public sealed class BinaryPreviewProvider : IPreviewProvider
             item.Name,
             item.FullPath,
             $"{item.Size?.ToSize() ?? "Unknown size"} · Modified {item.LastWriteTime:g} · Binary",
-            await ReadHexDumpAsync(file, MaxMiniPreviewBytes, cancellationToken),
+            await ReadAddressAsciiDumpAsync(file, MaxMiniPreviewBytes, cancellationToken),
             TextPreviewMode.Hex,
             isTruncated: file.Length > MaxMiniPreviewBytes);
     }
 
+    internal static async Task<string> ReadAddressAsciiDumpAsync(
+        FileInfo file,
+        int maximumBytes,
+        CancellationToken cancellationToken)
+    {
+        var (buffer, fileLength) = await ReadBytesAsync(file, maximumBytes, cancellationToken);
+        var text = FormatAddressAsciiDump(buffer);
+        return fileLength > buffer.Length ? text + "\n… binary preview truncated …" : text;
+    }
+
     internal static async Task<string> ReadHexDumpAsync(
+        FileInfo file,
+        int maximumBytes,
+        CancellationToken cancellationToken)
+    {
+        var (buffer, fileLength) = await ReadBytesAsync(file, maximumBytes, cancellationToken);
+        var text = FormatHexDump(buffer);
+        return fileLength > buffer.Length ? text + "\n… hex preview truncated …" : text;
+    }
+
+    internal static string FormatAddressAsciiDump(ReadOnlySpan<byte> bytes)
+    {
+        var output = new StringBuilder();
+        for (var offset = 0; offset < bytes.Length; offset += BytesPerLine)
+        {
+            if (output.Length > 0)
+                output.AppendLine();
+            var count = Math.Min(BytesPerLine, bytes.Length - offset);
+            output.Append($"{offset:X8}  |");
+            for (var index = 0; index < count; index++)
+            {
+                var value = bytes[offset + index];
+                output.Append(value is >= 0x20 and <= 0x7e ? (char)value : '.');
+            }
+            output.Append('|');
+        }
+        return output.ToString();
+    }
+
+    private static async Task<(byte[] Buffer, long FileLength)> ReadBytesAsync(
         FileInfo file,
         int maximumBytes,
         CancellationToken cancellationToken)
@@ -63,9 +102,7 @@ public sealed class BinaryPreviewProvider : IPreviewProvider
                 break;
             bytesRead += count;
         }
-
-        var text = FormatHexDump(buffer.AsSpan(0, bytesRead));
-        return stream.Length > bytesRead ? text + "\n… hex preview truncated …" : text;
+        return (buffer.AsSpan(0, bytesRead).ToArray(), stream.Length);
     }
 
     internal static string FormatHexDump(ReadOnlySpan<byte> bytes)

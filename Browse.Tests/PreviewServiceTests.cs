@@ -281,10 +281,19 @@ public sealed class PreviewServiceTests
         Assert.Multiple(() =>
         {
             Assert.That(result.Mode, Is.EqualTo(TextPreviewMode.Hex));
-            Assert.That(result.Text, Does.StartWith("00000000  00 01 20 41 42 7E 7F FF  30 31 32 33 34 35 36 37"));
-            Assert.That(result.Text, Does.EndWith("|.. AB~..01234567|"));
+            Assert.That(result.Text, Does.StartWith("00000000  |.. AB~..01234567|"));
+            Assert.That(result.Text, Does.Not.Contain("00 01 20"));
             Assert.That(result.CanExpand, Is.True);
         });
+    }
+
+    [Test]
+    public void CheckBinaryLargePreviewRetainsHexColumn()
+    {
+        var text = BinaryPreviewProvider.FormatHexDump(new byte[] { 0x00, 0x41, 0xFF });
+
+        Assert.That(text, Does.StartWith("00000000  00 41 FF"));
+        Assert.That(text, Does.EndWith("|.A.|"));
     }
 
     [TestCase("sample.exe", true)]
