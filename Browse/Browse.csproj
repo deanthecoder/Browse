@@ -31,6 +31,7 @@
     <PackageReference Include="LiveMarkdown.Avalonia" Version="1.12.1" />
     <PackageReference Include="Material.Icons.Avalonia" Version="2.2.0" />
     <PackageReference Include="PdfLibCore" Version="2.5.0" />
+    <PackageReference Include="Svg.Skia" Version="1.0.0.18" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../DTC.Core/DTC.Core/DTC.Core.csproj" />

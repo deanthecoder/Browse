@@ -56,6 +56,29 @@ public sealed class PreviewServiceTests
     }
 
     [Test]
+    public async Task CheckSvgUsesBoundedImagePreview()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "vector.svg"));
+        await File.WriteAllTextAsync(
+            file.FullName,
+            "<?xml version=\"1.0\"?><!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">" +
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1200 600\"><rect width=\"1200\" height=\"600\" fill=\"#72d5c7\" /></svg>");
+
+        using var result = await session.Dispatch(
+            () => new PreviewService().CreateAsync([new BrowserItem(file)]),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<ImagePreviewContent>());
+            Assert.That(((ImagePreviewContent)result).Image.PixelSize, Is.EqualTo(new Avalonia.PixelSize(700, 350)));
+            Assert.That(result.Details, Does.Contain("SVG vector image"));
+        });
+    }
+
+    [Test]
     public async Task CheckFlatFolderPreviewIncludesSize()
     {
         using var temp = new TempDirectory();

@@ -28,6 +28,7 @@ public sealed class PreviewService
         m_providers = providers?.ToArray() ??
         [
             new FolderPreviewProvider(),
+            new SvgPreviewProvider(),
             new ImagePreviewProvider(),
             new PdfPreviewProvider(),
             new VideoPreviewProvider(),
