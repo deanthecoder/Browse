@@ -60,6 +60,23 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public async Task CheckPendingPdfPreviewShowsMetadataWhileRendering()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "large.pdf"));
+        await File.WriteAllTextAsync(file.FullName, "large pdf contents");
+
+        var result = MainWindowViewModel.CreatePendingPreview(new BrowserItem(file));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result, Is.TypeOf<LoadingPreviewContent>());
+            Assert.That(result.Details, Does.Contain($"{file.Length:N0} bytes"));
+            Assert.That(((LoadingPreviewContent)result).Message, Is.EqualTo("Rendering PDF preview…"));
+        });
+    }
+
+    [Test]
     public void CheckColumnRefreshPreservesSelectedItemInstance()
     {
         using var temp = new TempDirectory();

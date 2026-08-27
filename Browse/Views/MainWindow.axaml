@@ -214,6 +214,10 @@
               </Button>
               <TextBlock Text="Select a file or folder" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasSelection}" />
               <Image Source="{Binding PreviewImage}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="HighQuality" IsVisible="{Binding IsImagePreview}" />
+              <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsLoadingPreview}">
+                <ProgressBar Width="120" Height="4" IsIndeterminate="True" />
+                <TextBlock Text="{Binding PreviewContent}" Classes="muted" TextAlignment="Center" />
+              </StackPanel>
               <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsTextPreview}">
                 <TextBlock Text="{Binding PreviewContent}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" />
               </ScrollViewer>

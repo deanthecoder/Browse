@@ -205,6 +205,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(IsArchiveEntryPreview));
             OnPropertyChanged(nameof(IsImagePreview));
             OnPropertyChanged(nameof(IsFolderPreview));
+            OnPropertyChanged(nameof(IsLoadingPreview));
             OnPropertyChanged(nameof(IsNoPreview));
             OnPropertyChanged(nameof(CanExpandPreview));
             previous?.Dispose();
@@ -215,6 +216,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public string PreviewContent => Preview switch
     {
+        LoadingPreviewContent loading => loading.Message,
         TextPreviewContent text => text.Text,
         ArchivePreviewContent archive => archive.Text,
         _ => null
@@ -256,6 +258,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public bool IsArchiveEntryPreview => Preview is ArchiveEntryPreviewContent;
     public bool IsImagePreview => Preview is ImagePreviewContent;
     public bool IsFolderPreview => Preview is FolderPreviewContent;
+    public bool IsLoadingPreview => Preview is LoadingPreviewContent;
     public bool IsNoPreview => HasSelection && Preview is EmptyPreviewContent or MultiplePreviewContent;
     public bool CanExpandPreview => Preview.CanExpand;
 
@@ -1034,7 +1037,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         HasSelection = selection.Length > 0;
         if (selection.Length == 1)
         {
-            Preview = new EmptyPreviewContent(selection[0].Name, selection[0].FullPath);
+            Preview = CreatePendingPreview(selection[0]);
             PreviewIcon = selection[0].Icon;
             PreviewIconBrush = selection[0].IconBrush;
         }
@@ -1071,6 +1074,15 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             HasSelection = selection.Length > 0;
         }
     }
+
+    internal static PreviewContent CreatePendingPreview(BrowserItem item) =>
+        item.EffectiveExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase)
+            ? new LoadingPreviewContent(
+                item.Name,
+                item.FullPath,
+                $"{item.Size?.ToSize() ?? "Unknown size"} · Modified {item.LastWriteTime:g}",
+                "Rendering PDF preview…")
+            : new EmptyPreviewContent(item.Name, item.FullPath);
 
     private void PopulateSidebar()
     {

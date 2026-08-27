@@ -39,6 +39,18 @@ public sealed class EmptyPreviewContent(string name = "No selection", string pat
     : PreviewContent(name, path, details);
 
 /// <summary>
+/// Describes a preview that is still being generated.
+/// </summary>
+/// <remarks>
+/// Immediate metadata keeps slow preview providers informative while their content is loading.
+/// </remarks>
+public sealed class LoadingPreviewContent(string name, string path, string details, string message)
+    : PreviewContent(name, path, details)
+{
+    public string Message { get; } = message;
+}
+
+/// <summary>
 /// Summarizes a multiple-item selection.
 /// </summary>
 /// <remarks>
