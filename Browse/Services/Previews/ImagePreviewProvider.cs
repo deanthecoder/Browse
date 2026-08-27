@@ -60,7 +60,7 @@ public sealed class ImagePreviewProvider : IPreviewProvider
             using var stream = file.OpenRead();
             var decodedBitmap = maximumDimension == int.MaxValue
                 ? new Bitmap(stream)
-                : Bitmap.DecodeToHeight(stream, maximumDimension, BitmapInterpolationMode.MediumQuality);
+                : Bitmap.DecodeToHeight(stream, maximumDimension, BitmapInterpolationMode.HighQuality);
             var metadata = ReadMetadata(file, extension);
             return new DecodedImage(
                 decodedBitmap,

@@ -213,7 +213,7 @@
                 <icons:MaterialIcon Kind="ArrowExpandAll" Width="18" Height="18" Foreground="#FFFFFF" />
               </Button>
               <TextBlock Text="Select a file or folder" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasSelection}" />
-              <Image Source="{Binding PreviewImage}" Stretch="Uniform" IsVisible="{Binding IsImagePreview}" />
+              <Image Source="{Binding PreviewImage}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="HighQuality" IsVisible="{Binding IsImagePreview}" />
               <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsTextPreview}">
                 <TextBlock Text="{Binding PreviewContent}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" />
               </ScrollViewer>
