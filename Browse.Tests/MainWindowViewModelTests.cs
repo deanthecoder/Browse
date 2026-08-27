@@ -149,6 +149,28 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public async Task CheckInitializeWithFileSelectsFileInContainingFolder()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "clipboard.txt"));
+        await File.WriteAllTextAsync(file.FullName, "selected");
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(),
+            new PreviewService(),
+            new FileOperationService(),
+            new SettingsService());
+
+        await viewModel.InitializeAsync(file.FullName);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(viewModel.CurrentPath, Is.EqualTo(temp.FullName));
+            Assert.That(viewModel.SelectedItems.Select(item => item.FullPath), Is.EqualTo(new[] { file.FullName }));
+            Assert.That(viewModel.Columns.Single().IsSelectedPath(file.FullName), Is.True);
+        });
+    }
+
+    [Test]
     public async Task CheckOpenSelectedFileIgnoresFolder()
     {
         using var temp = new TempDirectory();

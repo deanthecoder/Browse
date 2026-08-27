@@ -355,7 +355,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         var path = requestedPath;
         if (string.IsNullOrWhiteSpace(path))
             path = Settings.DefaultPath;
-        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+        if (string.IsNullOrWhiteSpace(path) || (!Directory.Exists(path) && !File.Exists(path)))
             path = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         await NavigateToAsync(path);
     }
