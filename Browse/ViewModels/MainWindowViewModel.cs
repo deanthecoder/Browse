@@ -1053,6 +1053,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 cancellationToken.ThrowIfCancellationRequested();
             }
             Preview = preview;
+            if (preview is FolderPreviewContent { Size: { } bytes })
+            {
+                FolderSize = bytes.ToSize();
+                FolderSizeExact = $"{bytes:N0} bytes";
+            }
         }
         catch (OperationCanceledException)
         {

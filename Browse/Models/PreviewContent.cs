@@ -51,10 +51,13 @@ public sealed class MultiplePreviewContent(string name, string details)
 /// Describes a selected folder.
 /// </summary>
 /// <remarks>
-/// Folder size remains opt-in because recursive enumeration can be expensive.
+/// Flat folders can include their cheaply calculated size; recursive enumeration remains opt-in.
 /// </remarks>
-public sealed class FolderPreviewContent(string name, string path, string details)
-    : PreviewContent(name, path, details);
+public sealed class FolderPreviewContent(string name, string path, string details, long? size = null)
+    : PreviewContent(name, path, details)
+{
+    public long? Size { get; } = size;
+}
 
 /// <summary>
 /// Selects the renderer appropriate for bounded text content.

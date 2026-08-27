@@ -16,16 +16,42 @@ namespace Browse.Services.Previews;
 /// Creates inexpensive folder metadata previews.
 /// </summary>
 /// <remarks>
-/// Recursive size calculation remains a separate user-triggered operation.
+/// Flat folder sizes are calculated lazily; recursive sizes remain a separate user-triggered operation.
 /// </remarks>
 public sealed class FolderPreviewProvider : IPreviewProvider
 {
     public ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken) =>
         ValueTask.FromResult(item.IsDirectory);
 
-    public Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken) =>
-        Task.FromResult<PreviewContent>(new FolderPreviewContent(
+    public async Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken)
+    {
+        var size = await Task.Run(
+            () => TryCalculateFlatFolderSize(new DirectoryInfo(item.FullPath), cancellationToken),
+            cancellationToken);
+        return new FolderPreviewContent(
             item.Name,
             item.FullPath,
-            $"Folder · Modified {item.LastWriteTime:g}"));
+            $"Folder · Modified {item.LastWriteTime:g}",
+            size);
+    }
+
+    private static long? TryCalculateFlatFolderSize(DirectoryInfo directory, CancellationToken cancellationToken)
+    {
+        try
+        {
+            long size = 0;
+            foreach (var entry in directory.EnumerateFileSystemInfos())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (entry is DirectoryInfo)
+                    return null;
+                size = checked(size + ((FileInfo)entry).Length);
+            }
+            return size;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+    }
 }

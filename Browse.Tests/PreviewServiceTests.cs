@@ -56,6 +56,30 @@ public sealed class PreviewServiceTests
     }
 
     [Test]
+    public async Task CheckFlatFolderPreviewIncludesSize()
+    {
+        using var temp = new TempDirectory();
+        await File.WriteAllTextAsync(Path.Combine(temp.FullName, "one.txt"), "123");
+        await File.WriteAllTextAsync(Path.Combine(temp.FullName, "two.txt"), "4567");
+
+        var result = (FolderPreviewContent)await new PreviewService().CreateAsync([new BrowserItem(temp)]);
+
+        Assert.That(result.Size, Is.EqualTo(7));
+    }
+
+    [Test]
+    public async Task CheckFolderPreviewLeavesNestedSizeForManualCalculation()
+    {
+        using var temp = new TempDirectory();
+        ((DirectoryInfo)temp).CreateSubdirectory("nested");
+        await File.WriteAllTextAsync(Path.Combine(temp.FullName, "one.txt"), "123");
+
+        var result = (FolderPreviewContent)await new PreviewService().CreateAsync([new BrowserItem(temp)]);
+
+        Assert.That(result.Size, Is.Null);
+    }
+
+    [Test]
     public async Task CheckZipPreviewListsArchiveContents()
     {
         using var temp = new TempDirectory();
