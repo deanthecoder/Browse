@@ -91,7 +91,7 @@ public sealed class ImagePreviewProvider : IPreviewProvider
         }
 
         var bitmap = CreateBitmap(pixels, previewWidth, previewHeight);
-        return new DecodedImage(bitmap, width, height, $"{samplesPerPixel} × {bitsPerSample} bpp");
+        return new DecodedImage(bitmap, width, height, DescribeChannelDepth(samplesPerPixel, bitsPerSample));
     }
 
     private static void DecodeTiffScanlines(
@@ -216,7 +216,7 @@ public sealed class ImagePreviewProvider : IPreviewProvider
                 var width = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(16, 4));
                 var height = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(20, 4));
                 var channels = header[25] switch { 0 => 1, 2 => 3, 3 => 1, 4 => 2, 6 => 4, _ => 1 };
-                return new ImageMetadata(width, height, $"{channels} × {header[24]} bpp");
+                return new ImageMetadata(width, height, DescribeChannelDepth(channels, header[24]));
             }
             if (extension.Equals(".gif", StringComparison.OrdinalIgnoreCase))
             {
@@ -231,7 +231,7 @@ public sealed class ImagePreviewProvider : IPreviewProvider
                 return new ImageMetadata(
                     Math.Abs(BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(18, 4))),
                     Math.Abs(BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(22, 4))),
-                    bitsPerPixel is 24 or 32 ? $"{bitsPerPixel / 8} × 8 bpp" : $"{bitsPerPixel} bpp");
+                    bitsPerPixel is 24 or 32 ? DescribeChannelDepth(bitsPerPixel / 8, 8) : $"{bitsPerPixel} bpp");
             }
             if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
                 extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
@@ -269,12 +269,15 @@ public sealed class ImagePreviewProvider : IPreviewProvider
                 return new ImageMetadata(
                     BinaryPrimitives.ReadUInt16BigEndian(frame.AsSpan(3, 2)),
                     BinaryPrimitives.ReadUInt16BigEndian(frame.AsSpan(1, 2)),
-                    $"{frame[5]} × {frame[0]} bpp");
+                    DescribeChannelDepth(frame[5], frame[0]));
             }
             stream.Seek(length - 2, SeekOrigin.Current);
         }
         return null;
     }
+
+    internal static string DescribeChannelDepth(int channelCount, int bitsPerChannel) =>
+        $"{channelCount} channel × {bitsPerChannel} bpp";
 
     private sealed record DecodedImage(Bitmap Bitmap, int Width, int Height, string BitDepth);
     private sealed record ImageMetadata(int Width, int Height, string BitDepth);

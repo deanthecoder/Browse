@@ -36,8 +36,8 @@ public partial class MainWindow : Window
     private static readonly DataFormat<string> ArchiveDragDataFormat = DataFormat.CreateStringApplicationFormat("Browse.ArchiveDrag");
     private readonly string m_requestedPath;
     private readonly bool m_openFromClipboard;
-    private readonly ClipboardImageService m_clipboardImageService;
-    private readonly bool m_ownsClipboardImageService;
+    private readonly ClipboardContentService m_clipboardContentService;
+    private readonly bool m_ownsClipboardContentService;
     private Point? m_dragStart;
     private ListBox m_dragSource;
     private BrowserItem[] m_dragItems;
@@ -72,12 +72,12 @@ public partial class MainWindow : Window
         MainWindowViewModel viewModel,
         string requestedPath = null,
         bool openFromClipboard = false,
-        ClipboardImageService clipboardImageService = null)
+        ClipboardContentService clipboardContentService = null)
     {
         m_requestedPath = requestedPath;
         m_openFromClipboard = openFromClipboard;
-        m_clipboardImageService = clipboardImageService ?? new ClipboardImageService();
-        m_ownsClipboardImageService = clipboardImageService == null;
+        m_clipboardContentService = clipboardContentService ?? new ClipboardContentService();
+        m_ownsClipboardContentService = clipboardContentService == null;
         DataContext = viewModel;
         InitializeComponent();
         AddHandler(PointerPressedEvent, OnColumnPointerPressed, RoutingStrategies.Tunnel, true);
@@ -92,8 +92,8 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             ViewModel.Columns.CollectionChanged -= OnColumnsChanged;
-            if (m_ownsClipboardImageService)
-                m_clipboardImageService.Dispose();
+            if (m_ownsClipboardContentService)
+                m_clipboardContentService.Dispose();
         };
         Opened += OnOpened;
     }
@@ -446,20 +446,20 @@ public partial class MainWindow : Window
         await CopySelectionAsync(false);
         CloseContextMenu();
     }
-    private async void OnCopyAsImageClicked(object sender, RoutedEventArgs e)
+    private async void OnCopyFileContentClicked(object sender, RoutedEventArgs e)
     {
         CloseContextMenu();
-        if (ViewModel.SelectedItems.Count != 1 || !ClipboardImageService.CanCopy(ViewModel.SelectedItems[0]))
+        if (ViewModel.SelectedItems.Count != 1 || !ClipboardContentService.CanCopy(ViewModel.SelectedItems[0]))
         {
-            ViewModel.ReportStatus("Select one supported image to copy.");
+            ViewModel.ReportStatus("Select one supported file to copy its content.");
             return;
         }
         try
         {
             var item = ViewModel.SelectedItems[0];
-            ViewModel.ReportStatus($"Copying {item.Name} as an image…");
-            await m_clipboardImageService.CopyAsync(Clipboard, item);
-            ViewModel.ReportStatus($"{item.Name} copied as an image.");
+            ViewModel.ReportStatus($"Copying content from {item.Name}…");
+            await m_clipboardContentService.CopyAsync(Clipboard, item);
+            ViewModel.ReportStatus($"Content copied from {item.Name}.");
         }
         catch (Exception ex)
         {

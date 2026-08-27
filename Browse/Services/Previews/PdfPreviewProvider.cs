@@ -10,6 +10,7 @@
 
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using Avalonia.Media.Imaging;
 using Browse.Models;
@@ -25,6 +26,7 @@ namespace Browse.Services.Previews;
 /// </remarks>
 public sealed class PdfPreviewProvider : IPreviewProvider
 {
+    private const int MaxPreviewDimension = 900;
     private static readonly SemaphoreSlim s_renderLock = new(1, 1);
     private static readonly TimeSpan s_renderTimeout = TimeSpan.FromSeconds(20);
 
@@ -35,6 +37,34 @@ public sealed class PdfPreviewProvider : IPreviewProvider
     public async Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken)
     {
         var file = (FileInfo)item.Info;
+        try
+        {
+            var rendered = await RenderFirstPageAsync(file, MaxPreviewDimension, 96, cancellationToken);
+            if (rendered.Result.PageCount == 0)
+                return new EmptyPreviewContent(item.Name, item.FullPath, "The PDF contains no pages.");
+
+            var details = $"{item.Size?.ToSize() ?? "Unknown size"} · Modified {item.LastWriteTime:g}\n" +
+                          $"{rendered.Result.PageCount:N0} page{(rendered.Result.PageCount == 1 ? string.Empty : "s")} · " +
+                          $"First page {rendered.Result.PageWidth:N0} × {rendered.Result.PageHeight:N0} pt";
+            return new ImagePreviewContent(item.Name, item.FullPath, details, rendered.Bitmap);
+        }
+        catch (PdfRenderException ex)
+        {
+            return Unavailable(item, ex.Message);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or
+                                   JsonException or Win32Exception or ArgumentException or NotSupportedException)
+        {
+            return Unavailable(item, "The PDF preview could not be created.");
+        }
+    }
+
+    internal static async Task<RenderedPdfPage> RenderFirstPageAsync(
+        FileInfo file,
+        int maximumDimension,
+        int dpi,
+        CancellationToken cancellationToken)
+    {
         var workDirectory = Path.Combine(Path.GetTempPath(), "Browse", "PdfPreview", Guid.NewGuid().ToString("N"));
         var bitmapPath = Path.Combine(workDirectory, "preview.bmp");
         var metadataPath = Path.Combine(workDirectory, "preview.json");
@@ -45,9 +75,14 @@ public sealed class PdfPreviewProvider : IPreviewProvider
             Directory.CreateDirectory(workDirectory);
             using var timeout = new CancellationTokenSource(s_renderTimeout);
             using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
-            using var process = Process.Start(CreateWorkerStartInfo(file.FullName, bitmapPath, metadataPath));
+            using var process = Process.Start(CreateWorkerStartInfo(
+                file.FullName,
+                bitmapPath,
+                metadataPath,
+                maximumDimension,
+                dpi));
             if (process == null)
-                return Unavailable(item, "The PDF preview worker could not be started.");
+                throw new PdfRenderException("The PDF preview worker could not be started.");
 
             try
             {
@@ -56,7 +91,7 @@ public sealed class PdfPreviewProvider : IPreviewProvider
             catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
                 TryKill(process);
-                return Unavailable(item, "PDF rendering timed out.");
+                throw new PdfRenderException("PDF rendering timed out.");
             }
             catch (OperationCanceledException)
             {
@@ -65,25 +100,16 @@ public sealed class PdfPreviewProvider : IPreviewProvider
             }
 
             if (process.ExitCode != 0 || !File.Exists(bitmapPath) || !File.Exists(metadataPath))
-                return Unavailable(item, "The PDF could not be rendered safely.");
+                throw new PdfRenderException("The PDF could not be rendered safely.");
 
             var result = JsonSerializer.Deserialize<PdfRenderResult>(await File.ReadAllTextAsync(metadataPath, cancellationToken));
             if (result == null)
-                return Unavailable(item, "The PDF renderer returned an invalid result.");
+                throw new PdfRenderException("The PDF renderer returned an invalid result.");
             if (result.PageCount == 0)
-                return new EmptyPreviewContent(item.Name, item.FullPath, "The PDF contains no pages.");
+                return new RenderedPdfPage(result, null);
 
             await using var bitmapStream = File.OpenRead(bitmapPath);
-            var bitmap = new Bitmap(bitmapStream);
-            var details = $"{item.Size?.ToSize() ?? "Unknown size"} · Modified {item.LastWriteTime:g}\n" +
-                          $"{result.PageCount:N0} page{(result.PageCount == 1 ? string.Empty : "s")} · " +
-                          $"First page {result.PageWidth:N0} × {result.PageHeight:N0} pt";
-            return new ImagePreviewContent(item.Name, item.FullPath, details, bitmap);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or
-                                   JsonException or Win32Exception or ArgumentException or NotSupportedException)
-        {
-            return Unavailable(item, "The PDF preview could not be created.");
+            return new RenderedPdfPage(result, new Bitmap(bitmapStream));
         }
         finally
         {
@@ -101,7 +127,12 @@ public sealed class PdfPreviewProvider : IPreviewProvider
         }
     }
 
-    private static ProcessStartInfo CreateWorkerStartInfo(string pdfPath, string bitmapPath, string metadataPath)
+    private static ProcessStartInfo CreateWorkerStartInfo(
+        string pdfPath,
+        string bitmapPath,
+        string metadataPath,
+        int maximumDimension,
+        int dpi)
     {
         var assemblyPath = typeof(PdfPreviewProvider).Assembly.Location;
         var executablePath = Environment.ProcessPath;
@@ -125,6 +156,8 @@ public sealed class PdfPreviewProvider : IPreviewProvider
         startInfo.ArgumentList.Add(pdfPath);
         startInfo.ArgumentList.Add(bitmapPath);
         startInfo.ArgumentList.Add(metadataPath);
+        startInfo.ArgumentList.Add(maximumDimension.ToString(CultureInfo.InvariantCulture));
+        startInfo.ArgumentList.Add(dpi.ToString(CultureInfo.InvariantCulture));
         return startInfo;
     }
 
@@ -141,4 +174,8 @@ public sealed class PdfPreviewProvider : IPreviewProvider
         {
         }
     }
+
+    private sealed class PdfRenderException(string message) : Exception(message);
 }
+
+internal sealed record RenderedPdfPage(PdfRenderResult Result, Bitmap Bitmap);

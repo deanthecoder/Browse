@@ -56,6 +56,12 @@ public sealed class PreviewServiceTests
     }
 
     [Test]
+    public void CheckImageChannelDepthIsClearlyLabeled()
+    {
+        Assert.That(ImagePreviewProvider.DescribeChannelDepth(4, 8), Is.EqualTo("4 channel × 8 bpp"));
+    }
+
+    [Test]
     public async Task CheckSvgUsesBoundedImagePreview()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
@@ -213,6 +219,14 @@ public sealed class PreviewServiceTests
             Assert.That(((ImagePreviewContent)result).Image.PixelSize.Width, Is.GreaterThan(0));
             Assert.That(((ImagePreviewContent)result).Image.PixelSize.Height, Is.GreaterThan(0));
         });
+    }
+
+    [Test]
+    public void CheckPdfClipboardRenderUses72Dpi()
+    {
+        var result = PdfPreviewWorker.GetRenderSize(200, 100, 0, 72);
+
+        Assert.That(result, Is.EqualTo(new Avalonia.PixelSize(200, 100)));
     }
 
     [Test]

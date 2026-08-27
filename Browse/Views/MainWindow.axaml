@@ -47,7 +47,7 @@
       <MenuItem Header="New folder..." Click="OnNewFolderClicked" IsVisible="{Binding CanReceiveFiles}" />
       <Separator />
       <MenuItem Header="Copy full path(s)" Click="OnCopyPathsClicked" />
-      <MenuItem Header="Copy as image" Click="OnCopyAsImageClicked" IsVisible="{Binding CanCopyAsImage}" />
+      <MenuItem Header="Copy file content" Click="OnCopyFileContentClicked" IsVisible="{Binding CanCopyFileContent}" />
       <MenuItem Header="Advanced" IsVisible="{Binding CanShowAdvancedActions}">
         <MenuItem Header="Copy MD5 hash" Click="OnCopyMd5Clicked" />
         <MenuItem Header="Copy SHA-256 hash" Click="OnCopySha256Clicked" />

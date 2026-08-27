@@ -82,7 +82,7 @@ public sealed class BrowserItem
     public string ArchivePath { get; }
     public string ArchiveEntryPath { get; }
     public IBrush TextBrush => IsArchiveEntry ? ArchiveTextBrush : StandardTextBrush;
-    public bool CanCopyAsImage => ClipboardImageService.CanCopy(this);
+    public bool CanCopyFileContent => ClipboardContentService.CanCopy(this);
     public bool IsDotFolder { get; }
     public bool IsHidden { get; }
     public bool IsUnavailable { get; }
