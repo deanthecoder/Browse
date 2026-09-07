@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private Point? m_dragStart;
     private ListBox m_dragSource;
     private BrowserItem[] m_dragItems;
+    private BrowserItem m_pendingClickItem;
     private ListBox m_focusedColumn;
     private ContextMenu m_pendingContextMenu;
     private ContextMenu m_openContextMenu;
@@ -283,8 +284,17 @@ public partial class MainWindow : Window
         if (!extendsSelection && itemContainer.DataContext is BrowserItem item)
         {
             if (listBox.SelectedItems.Contains(item))
+            {
+                // Keep the group selected until this becomes a click rather than a drag.
                 m_dragItems = listBox.SelectedItems.Cast<BrowserItem>().ToArray();
-            listBox.SelectedItem = item;
+                m_pendingClickItem = item;
+                itemContainer.Focus();
+                e.Handled = true;
+            }
+            else
+            {
+                listBox.SelectedItem = item;
+            }
         }
         SetFocusedColumn(listBox);
         m_dragSource = listBox;
@@ -293,6 +303,12 @@ public partial class MainWindow : Window
 
     private async void OnColumnPointerReleased(object sender, PointerReleasedEventArgs e)
     {
+        if (e.GetCurrentPoint(this).Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonReleased &&
+            m_pendingClickItem is { } clickedItem && m_dragSource is { } sourceList)
+        {
+            sourceList.SelectedItem = clickedItem;
+            e.Handled = true;
+        }
         ClearPendingDrag();
         if (e.GetCurrentPoint(this).Properties.PointerUpdateKind == PointerUpdateKind.RightButtonReleased &&
             m_pendingContextMenu is { } contextMenu)
@@ -328,6 +344,11 @@ public partial class MainWindow : Window
         var listBox = e.Source as ListBox ?? (e.Source as Visual)?.FindAncestorOfType<ListBox>();
         if (listBox == null || listBox != m_dragSource || m_dragStart == null)
             return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            ClearPendingDrag();
+            return;
+        }
         var position = e.GetPosition(this);
         if (Math.Abs(position.X - m_dragStart.Value.X) < 14 && Math.Abs(position.Y - m_dragStart.Value.Y) < 14)
             return;
@@ -382,6 +403,7 @@ public partial class MainWindow : Window
         m_dragStart = null;
         m_dragSource = null;
         m_dragItems = null;
+        m_pendingClickItem = null;
     }
 
     private void OnItemDoubleTapped(object sender, TappedEventArgs e)

@@ -8,7 +8,15 @@
 //
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
+using System.Reflection;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Browse.Services;
+using Browse.ViewModels;
 using Browse.Models;
 using Browse.Views;
 using DTC.Core;
@@ -24,6 +32,46 @@ namespace Browse.Tests;
 [TestFixture]
 public sealed class MainWindowTests
 {
+    [Test]
+    public async Task CheckSelectedGroupSurvivesMouseDownAndCollapsesOnClickRelease()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(Path.Combine(temp.FullName, "one.txt"), "one");
+        File.WriteAllText(Path.Combine(temp.FullName, "two.txt"), "two");
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
+        await session.Dispatch(async () =>
+        {
+            using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(),
+                new FileOperationService(), new SettingsService());
+            var window = new MainWindow(model, temp.FullName);
+            window.Show();
+            try
+            {
+                for (var attempt = 0; attempt < 100 && (model.Columns.Count == 0 || model.Columns[0].IsLoading); attempt++)
+                    await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+                var list = window.GetVisualDescendants().OfType<ListBox>()
+                    .First(control => control.DataContext is FolderColumnViewModel);
+                var items = list.ItemsView.Cast<BrowserItem>().Take(2).ToArray();
+                list.SelectedItems.Clear();
+                foreach (var item in items)
+                    list.SelectedItems.Add(item);
+                Dispatcher.UIThread.RunJobs();
+                var container = list.ContainerFromIndex(0);
+                var point = container.TranslatePoint(new Point(40, container.Bounds.Height / 2), window)!.Value;
+
+                window.MouseDown(point, MouseButton.Left);
+                Assert.That(list.SelectedItems.Cast<BrowserItem>(), Is.EquivalentTo(items));
+                window.MouseUp(point, MouseButton.Left);
+                Assert.That(list.SelectedItems.Cast<BrowserItem>(), Is.EqualTo(new[] { items[0] }));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [TestCase("tool.exe", ".exe", true)]
     [TestCase("tool.exe", "too", true)]
     [TestCase("tool.exe", ".dll", false)]
