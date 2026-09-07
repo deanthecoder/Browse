@@ -72,6 +72,53 @@ public sealed class MainWindowTests
         }, CancellationToken.None);
     }
 
+    [TestCase(RawInputModifiers.Control)]
+    [TestCase(RawInputModifiers.Meta)]
+    public async Task CheckColumnFilterKeyboardInputDoesNotPerformFileOperations(RawInputModifiers modifier)
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(Path.Combine(temp.FullName, "one.txt"), "one");
+        File.WriteAllText(Path.Combine(temp.FullName, "two.txt"), "two");
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
+        await session.Dispatch(async () =>
+        {
+            using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(),
+                new FileOperationService(), new SettingsService());
+            var window = new MainWindow(model, temp.FullName);
+            window.Show();
+            try
+            {
+                for (var attempt = 0; attempt < 100 && (model.Columns.Count == 0 || model.Columns[0].IsLoading); attempt++)
+                    await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+                var column = model.Columns[0];
+                window.KeyPressQwerty(PhysicalKey.F, modifier);
+                Dispatcher.UIThread.RunJobs();
+                var edit = window.GetVisualDescendants().OfType<TextBox>()
+                    .Single(control => control.Name == "ColumnFilterTextBox");
+                Assert.That(edit.IsFocused, Is.True);
+                window.KeyTextInput("two");
+                Assert.That(column.Items.Select(item => item.Name), Is.EqualTo(new[] { "two.txt" }));
+
+                edit.SelectAll();
+                window.KeyPressQwerty(PhysicalKey.Delete, RawInputModifiers.None);
+                Assert.That(edit.Text, Is.Empty);
+                Assert.That(Directory.GetFiles(temp.FullName), Has.Length.EqualTo(2));
+                window.KeyTextInput("one");
+                window.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
+                Assert.That(edit.IsFocused, Is.False);
+                Assert.That(column.FilterText, Is.EqualTo("one"));
+                window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+                Assert.That(column.IsFilterVisible, Is.False);
+                Assert.That(column.Items, Has.Count.EqualTo(2));
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, CancellationToken.None);
+    }
+
     [TestCase("tool.exe", ".exe", true)]
     [TestCase("tool.exe", "too", true)]
     [TestCase("tool.exe", ".dll", false)]

@@ -22,6 +22,9 @@ namespace Browse.ViewModels;
 /// </remarks>
 public sealed class FolderColumnViewModel : ViewModelBase
 {
+    private IReadOnlyList<BrowserItem> m_allItems = [];
+    private string m_filterText = string.Empty;
+    private bool m_isFilterVisible;
     private bool m_isLoading;
     private string m_error;
     private bool m_isRefreshing;
@@ -48,6 +51,28 @@ public sealed class FolderColumnViewModel : ViewModelBase
     public bool IsArchive => Archive != null;
     public string Title { get; }
     public ObservableCollection<BrowserItem> Items { get; } = [];
+
+    public string FilterText
+    {
+        get => m_filterText;
+        set
+        {
+            if (SetField(ref m_filterText, value ?? string.Empty))
+                ApplyFilter();
+        }
+    }
+
+    public bool IsFilterVisible
+    {
+        get => m_isFilterVisible;
+        set => SetField(ref m_isFilterVisible, value);
+    }
+
+    public void CloseFilter()
+    {
+        FilterText = string.Empty;
+        IsFilterVisible = false;
+    }
 
     public void SetSelection(IEnumerable<BrowserItem> items)
         => SetSelectionPaths(items.Select(item => item.FullPath));
@@ -85,6 +110,25 @@ public sealed class FolderColumnViewModel : ViewModelBase
 
     public void ReplaceItems(IReadOnlyList<BrowserItem> items)
     {
+        m_allItems = items.ToArray();
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        var items = new List<BrowserItem>();
+        string pendingHeading = null;
+        foreach (var item in m_allItems)
+        {
+            if (!string.IsNullOrEmpty(item.GroupHeading))
+                pendingHeading = item.GroupHeading;
+            if (!item.Name.Contains(FilterText, StringComparison.CurrentCultureIgnoreCase))
+                continue;
+            // Carry a filtered-out group's heading to its first visible item.
+            items.Add(pendingHeading == item.GroupHeading ? item : item.WithGroupHeading(pendingHeading));
+            pendingHeading = null;
+        }
+        m_selectedPaths.IntersectWith(items.Select(item => item.FullPath));
         var existing = Items.ToDictionary(item => item.FullPath, StringComparer.OrdinalIgnoreCase);
         var desired = items
             .Select(item => existing.TryGetValue(item.FullPath, out var current) &&

@@ -521,6 +521,54 @@ public partial class MainWindow : Window
             m_favoriteDragCanceled = true;
         var hasModalOverlay = ViewModel.IsGoToVisible || ViewModel.IsRenameVisible ||
                               ViewModel.IsSettingsVisible || ViewModel.IsNewFolderVisible;
+        var primaryModifier = e.KeyModifiers.HasFlag(KeyModifiers.Control) ||
+                              e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+        if (!hasModalOverlay && primaryModifier && e.Key == Key.F)
+        {
+            var list = m_focusedColumn ?? this.GetVisualDescendants().OfType<ListBox>()
+                .FirstOrDefault(control => control.DataContext is FolderColumnViewModel);
+            if (list?.DataContext is FolderColumnViewModel column)
+            {
+                SetFocusedColumn(list);
+                column.IsFilterVisible = true;
+                Dispatcher.UIThread.Post(() =>
+                {
+                    var edit = this.GetVisualDescendants().OfType<TextBox>()
+                        .FirstOrDefault(control => control.Name == "ColumnFilterTextBox" &&
+                                                   ReferenceEquals(control.DataContext, column));
+                    edit?.Focus();
+                    edit?.SelectAll();
+                });
+            }
+            e.Handled = true;
+            return;
+        }
+        var textBox = e.Source as TextBox ?? (e.Source as Visual)?.FindAncestorOfType<TextBox>();
+        if (textBox is { Name: "ColumnFilterTextBox", DataContext: FolderColumnViewModel filterColumn })
+        {
+            if (e.Key == Key.Escape)
+            {
+                filterColumn.CloseFilter();
+                m_focusedColumn?.Focus();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Enter)
+            {
+                m_focusedColumn?.Focus();
+                if (m_focusedColumn?.SelectedIndex == -1 && m_focusedColumn.ItemsView.Count > 0)
+                    m_focusedColumn.SelectedIndex = 0;
+                e.Handled = true;
+            }
+            // Editing keys must never trigger file operations or column navigation.
+            return;
+        }
+        if (!hasModalOverlay && e.Key == Key.Escape &&
+            m_focusedColumn?.DataContext is FolderColumnViewModel { IsFilterVisible: true } activeFilter)
+        {
+            activeFilter.CloseFilter();
+            e.Handled = true;
+            return;
+        }
         if (!hasModalOverlay && m_focusedFavorite != null && e.KeyModifiers == KeyModifiers.None)
         {
             if (e.Key is Key.Up or Key.Down)
@@ -559,8 +607,6 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
-        var primaryModifier = e.KeyModifiers.HasFlag(KeyModifiers.Control) ||
-                              e.KeyModifiers.HasFlag(KeyModifiers.Meta);
         if (!hasModalOverlay && primaryModifier && e.Key == Key.G)
         {
             ViewModel.ShowGoTo();

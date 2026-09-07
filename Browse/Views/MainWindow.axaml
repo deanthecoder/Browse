@@ -136,14 +136,17 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:FolderColumnViewModel">
               <Border Width="270" MinWidth="230" Background="#202329" BorderBrush="#3B4049" BorderThickness="0,0,1,0">
-                <Grid RowDefinitions="34,*">
+                <Grid RowDefinitions="34,Auto,*">
                   <Border Grid.Row="0" Background="#24272D" BorderBrush="#3B4049" BorderThickness="0,0,0,1" Padding="10,7">
                     <Grid ColumnDefinitions="*,Auto">
                       <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                       <ProgressBar Grid.Column="1" Width="36" Height="3" IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
                     </Grid>
                   </Border>
-                  <Grid Grid.Row="1">
+                  <TextBox Grid.Row="1" Name="ColumnFilterTextBox" Margin="6" MinHeight="28"
+                           Text="{Binding FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                           Watermark="Filter names… (Esc to clear)" IsVisible="{Binding IsFilterVisible}" />
+                  <Grid Grid.Row="2">
                     <ListBox Classes="browserList"
                              ItemsSource="{Binding Items}"
                              SelectionMode="Multiple"

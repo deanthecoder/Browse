@@ -21,6 +21,7 @@ It combines that navigation model with the conveniences expected on Windows: F2 
 - Modified-date grouping under **Today**, **Yesterday**, **This Week**, **Last Week**, **This Month**, and **Earlier**. It is enabled by default and can be toggled globally.
 - Arrow-key navigation through folders, including moving above the leftmost column.
 - Go directly to a local, escaped POSIX, or UNC path with `Ctrl+G` / `Command+G`.
+- Filter the active column by any part of a filename with `Ctrl+F` / `Command+F`; press `Escape` to clear and close the filter.
 - Live filesystem watching keeps open columns synchronized with changes made elsewhere.
 
 ### Useful previews
@@ -62,6 +63,7 @@ Browse keeps directory snapshots briefly cached so backtracking is immediate, th
 
 | Action | Windows | macOS |
 | --- | --- | --- |
+| Filter current column | `Ctrl+F` | `Command+F` |
 | Go to path | `Ctrl+G` | `Command+G` |
 | Copy / cut / paste | `Ctrl+C/X/V` | `Command+C/X/V` |
 | Enter or leave a folder | `Left` / `Right` | `Left` / `Right` |

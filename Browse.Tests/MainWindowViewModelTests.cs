@@ -97,6 +97,43 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public void CheckColumnFilterMatchesNamesAndSurvivesRefresh()
+    {
+        using var temp = new TempDirectory();
+        var column = new FolderColumnViewModel(temp);
+        BrowserItem Item(string name) => new(new FileInfo(Path.Combine(temp.FullName, name)));
+        column.ReplaceItems([Item("alpha.png"), Item("beta.txt")]);
+        column.FilterText = ".PNG";
+        Assert.That(column.Items.Select(item => item.Name), Is.EqualTo(new[] { "alpha.png" }));
+
+        column.ReplaceItems([Item("alpha.png"), Item("beta.txt"), Item("new.png")]);
+        Assert.That(column.Items.Select(item => item.Name), Is.EqualTo(new[] { "alpha.png", "new.png" }));
+        column.FilterText = "missing";
+        Assert.That(column.Items, Is.Empty);
+        column.CloseFilter();
+        Assert.That(column.Items, Has.Count.EqualTo(3));
+        Assert.That(column.IsFilterVisible, Is.False);
+    }
+
+    [Test]
+    public void CheckFilteringRetainsDateHeadingAndClearsHiddenSelection()
+    {
+        using var temp = new TempDirectory();
+        var first = new BrowserItem(new FileInfo(Path.Combine(temp.FullName, "alpha.txt")), groupHeading: "Today");
+        var second = new BrowserItem(new FileInfo(Path.Combine(temp.FullName, "beta.txt")));
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([first, second]);
+        column.SetSelection([first]);
+
+        column.FilterText = "beta";
+
+        Assert.That(column.Items.Single().GroupHeading, Is.EqualTo("Today"));
+        Assert.That(column.IsSelectedPath(first.FullPath), Is.False);
+        column.CloseFilter();
+        Assert.That(column.Items.Select(item => item.GroupHeading), Is.EqualTo(new[] { "Today", null }));
+    }
+
+    [Test]
     public void CheckWindowTitleIncludesActiveFullPath()
     {
         using var temp = new TempDirectory();
