@@ -16,7 +16,7 @@ It combines that navigation model with the conveniences expected on Windows: F2 
 ### Column-first navigation
 
 - Finder-style folder columns with horizontal scrolling.
-- Favorites and drives always available in the sidebar.
+- Favorites and drives always available in the sidebar; hover over a drive to see used, free, and total space.
 - Files and folders mixed together instead of separated into blocks.
 - Modified-date grouping under **Today**, **Yesterday**, **This Week**, **Last Week**, **This Month**, and **Earlier**. It is enabled by default and can be toggled globally.
 - Arrow-key navigation through folders, including moving above the leftmost column.

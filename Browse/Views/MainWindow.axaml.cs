@@ -149,6 +149,15 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void OnDrivePointerEntered(object sender, PointerEventArgs e)
+    {
+        if (sender is not Button { Tag: SidebarEntryViewModel entry } button)
+            return;
+        ToolTip.SetTip(button, $"{entry.Path}\nReading disk usage…");
+        var tip = await Task.Run(entry.GetDriveToolTip);
+        ToolTip.SetTip(button, tip);
+    }
+
     private void OnFavoriteGotFocus(object sender, GotFocusEventArgs e)
     {
         if (sender is Button { Tag: SidebarEntryViewModel entry } button && ViewModel.Favorites.Contains(entry))

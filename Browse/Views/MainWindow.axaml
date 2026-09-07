@@ -107,7 +107,8 @@
             <ItemsControl ItemsSource="{Binding Drives}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:SidebarEntryViewModel">
-                  <Button Tag="{Binding}" Classes="chrome" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked">
+                  <Button Tag="{Binding}" Classes="chrome" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked"
+                          ToolTip.Tip="{Binding Path}" PointerEntered="OnDrivePointerEntered">
                     <Grid ColumnDefinitions="24,*" ColumnSpacing="7">
                       <icons:MaterialIcon Grid.Column="0" Kind="Harddisk" Width="18" Height="18" Foreground="#AAB4C2" />
                       <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />

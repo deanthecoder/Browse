@@ -134,6 +134,32 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public void CheckDriveTooltipIncludesCapacityAndUsage()
+    {
+        var tip = SidebarEntryViewModel.FormatDriveUsage("C:\\", 1000, 250);
+        Assert.That(tip, Does.StartWith("C:\\\n"));
+        Assert.That(tip, Does.Contain("750 bytes used of"));
+        Assert.That(tip, Does.Contain("75"));
+        Assert.That(tip, Does.EndWith("250 bytes free"));
+    }
+
+    [TestCase(0, 0)]
+    [TestCase(100, -1)]
+    [TestCase(100, 101)]
+    public void CheckUnavailableDriveUsageHasReadableFallback(long total, long free)
+    {
+        Assert.That(SidebarEntryViewModel.FormatDriveUsage("drive", total, free),
+            Is.EqualTo("drive\nDisk usage unavailable"));
+    }
+
+    [Test]
+    public void CheckInvalidDriveDoesNotThrowWhenReadingTooltip()
+    {
+        var entry = new SidebarEntryViewModel("Unavailable", "invalid\0drive", true);
+        Assert.That(entry.GetDriveToolTip(), Does.EndWith("Disk usage unavailable"));
+    }
+
+    [Test]
     public void CheckWindowTitleIncludesActiveFullPath()
     {
         using var temp = new TempDirectory();
