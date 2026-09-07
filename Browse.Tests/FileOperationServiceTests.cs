@@ -72,6 +72,32 @@ public sealed class FileOperationServiceTests
     }
 
     [Test]
+    public void CheckPersistentFileLockStopsAfterMaximumAttempts()
+    {
+        var attempts = 0;
+        Assert.That(() => FileOperationService.RetryFileLock(() =>
+        {
+            attempts++;
+            throw new IOException("Locked", unchecked((int)0x80070021));
+        }, CancellationToken.None, maximumAttempts: 3, retryDelay: TimeSpan.Zero), Throws.TypeOf<IOException>());
+        Assert.That(attempts, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void CheckFileLockRetryHonorsCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var attempts = 0;
+        Assert.That(() => FileOperationService.RetryFileLock(() =>
+        {
+            attempts++;
+            cancellation.Cancel();
+            throw new IOException("Locked", unchecked((int)0x80070020));
+        }, cancellation.Token), Throws.InstanceOf<OperationCanceledException>());
+        Assert.That(attempts, Is.EqualTo(1));
+    }
+
+    [Test]
     public void CheckNonLockingIoErrorIsNotRetried()
     {
         var attempts = 0;

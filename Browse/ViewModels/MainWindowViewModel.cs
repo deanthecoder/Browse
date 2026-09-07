@@ -41,6 +41,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ConcurrentDictionary<FolderColumnViewModel, int> m_watcherGenerations = [];
     private CancellationTokenSource m_navigationCancellation = new();
     private CancellationTokenSource m_previewCancellation = new();
+    private readonly ConcurrentDictionary<Task, byte> m_previewTasks = new();
+    private bool m_isDeleting;
     private bool m_clipboardIsCut;
     private bool m_isGoToVisible;
     private bool m_isSettingsVisible;
@@ -832,7 +834,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public async Task DeleteSelectionAsync()
     {
-        if (m_selectedItems.Count == 0 || m_selectedItems.Any(item => item.IsArchiveEntry))
+        if (m_isDeleting || m_selectedItems.Count == 0 || m_selectedItems.Any(item => item.IsArchiveEntry))
             return;
         var items = m_selectedItems.ToArray();
         var column = Columns.FirstOrDefault(candidate => items.Any(candidate.Items.Contains));
@@ -845,9 +847,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             .ToArray();
         try
         {
+            m_isDeleting = true;
             m_previewCancellation.Cancel();
             Preview = new EmptyPreviewContent();
             StatusText = $"Moving {items.Length:N0} item(s) to the recycle bin…";
+            // Native preview reads may finish after cancellation. Wait for their handles to close.
+            await Task.WhenAll(m_previewTasks.Keys.ToArray());
             await m_fileOperationService.MoveToTrashAsync(items);
             column?.SetSelectionPaths(replacementPath == null ? [] : [replacementPath]);
             foreach (var parent in parents)
@@ -864,6 +869,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             StatusText = ex.Message;
+        }
+        finally
+        {
+            m_isDeleting = false;
+            _ = UpdatePreviewAsync();
         }
     }
 
@@ -1016,6 +1026,22 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task UpdatePreviewAsync()
     {
+        if (m_isDeleting)
+            return;
+        var task = CreatePreviewAsync();
+        m_previewTasks.TryAdd(task, 0);
+        try
+        {
+            await task;
+        }
+        finally
+        {
+            m_previewTasks.TryRemove(task, out _);
+        }
+    }
+
+    private async Task CreatePreviewAsync()
+    {
         m_previewCancellation.Cancel();
         m_previewCancellation.Dispose();
         m_previewCancellation = new CancellationTokenSource();
@@ -1068,6 +1094,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return;
             Preview = new EmptyPreviewContent(
                 selection.Length == 1 ? selection[0].Name : "Preview unavailable",
                 details: $"Preview unavailable · {ex.Message}");

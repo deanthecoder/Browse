@@ -86,7 +86,8 @@ public sealed class ExecutablePreviewProvider : IPreviewProvider
             return "Inspection available on Windows";
         try
         {
-            using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(file.FullName));
+            using var signedCertificate = X509Certificate.CreateFromSignedFile(file.FullName);
+            using var certificate = new X509Certificate2(signedCertificate);
             var signer = certificate.GetNameInfo(X509NameType.SimpleName, false);
             return string.IsNullOrWhiteSpace(signer) ? "Signed" : $"Signed by {signer}";
         }

@@ -433,6 +433,56 @@ public sealed class MainWindowViewModelTests
         Assert.That(provider.CreatedNames, Is.EqualTo(new[] { first.Name, second.Name }));
     }
 
+    [Test]
+    public async Task CheckDeletionWaitsForCanceledPreviewToReleaseTheFile()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "locked.exe"));
+        File.WriteAllText(file.FullName, "preview");
+        var provider = new DeferredPreviewProvider();
+        using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService([provider]),
+            new FileOperationService(), new SettingsService());
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([new BrowserItem(file)]);
+        model.Columns.Add(column);
+        await model.SelectAsync(column, [column.Items[0]]);
+
+        var deletion = model.DeleteSelectionAsync();
+        try
+        {
+            Assert.That(provider.Cancellation.IsCancellationRequested, Is.True);
+            Assert.That(deletion.IsCompleted, Is.False, "Cancellation alone must not start deletion.");
+            Assert.That(File.Exists(file.FullName), Is.True);
+            await model.DeleteSelectionAsync();
+            Assert.That(deletion.IsCompleted, Is.False, "Repeated Delete must not start a second operation.");
+        }
+        finally
+        {
+            // Simulate external removal so this test never writes to the user's recycle bin.
+            File.Delete(file.FullName);
+            provider.Finished.TrySetResult();
+            await deletion.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    /// <summary>Simulates native preview work that cannot stop immediately on cancellation.</summary>
+    /// <remarks>The test controls when the provider has released its resources.</remarks>
+    private sealed class DeferredPreviewProvider : IPreviewProvider
+    {
+        public TaskCompletionSource Finished { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public CancellationToken Cancellation { get; private set; }
+
+        public ValueTask<bool> CanPreviewAsync(BrowserItem item, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(true);
+
+        public async Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken)
+        {
+            Cancellation = cancellationToken;
+            await Finished.Task;
+            throw new IOException("The canceled preview has finished.");
+        }
+    }
+
     private sealed class RecordingPreviewProvider : IPreviewProvider
     {
         public List<string> CreatedNames { get; } = [];
