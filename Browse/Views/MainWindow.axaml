@@ -148,7 +148,7 @@
                            Text="{Binding FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                            Watermark="Filter names… (Esc to clear)" IsVisible="{Binding IsFilterVisible}" />
                   <Grid Grid.Row="2">
-                    <ListBox Classes="browserList"
+                    <ListBox Classes="browserList" Focusable="True"
                              ItemsSource="{Binding Items}"
                              SelectionMode="Multiple"
                              DragDrop.AllowDrop="True"

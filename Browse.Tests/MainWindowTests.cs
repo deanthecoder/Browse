@@ -69,6 +69,7 @@ public sealed class MainWindowTests
             {
                 window.Close();
             }
+            return true;
         }, CancellationToken.None);
     }
 
@@ -116,6 +117,7 @@ public sealed class MainWindowTests
             {
                 window.Close();
             }
+            return true;
         }, CancellationToken.None);
     }
 
