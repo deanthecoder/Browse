@@ -228,6 +228,45 @@ public sealed class MainWindowViewModelTests
         });
     }
 
+    [TestCase("home", Environment.SpecialFolder.UserProfile)]
+    [TestCase("  \"HoMe\"  ", Environment.SpecialFolder.UserProfile)]
+    [TestCase("desktop", Environment.SpecialFolder.DesktopDirectory)]
+    [TestCase("appdata", Environment.SpecialFolder.ApplicationData)]
+    [TestCase("LOCALAPPDATA", Environment.SpecialFolder.LocalApplicationData)]
+    [TestCase("programdata", Environment.SpecialFolder.CommonApplicationData)]
+    public async Task CheckGoToSpecialLocation(string input, Environment.SpecialFolder folder)
+    {
+        if (!OperatingSystem.IsWindows() && input.Trim().ToLowerInvariant() is "appdata" or "localappdata" or "programdata")
+            Assert.Ignore("Windows-specific alias.");
+        var expected = Environment.GetFolderPath(folder);
+        if (!Directory.Exists(expected))
+            Assert.Ignore("Special folder is unavailable on this machine.");
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(), new PreviewService(), new FileOperationService(), new SettingsService());
+        viewModel.ShowGoTo();
+        viewModel.GoToPath = input;
+
+        Assert.That(await viewModel.SubmitGoToAsync(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(viewModel.CurrentPath, Is.EqualTo(expected));
+            Assert.That(viewModel.IsGoToVisible, Is.False);
+        });
+    }
+
+    [Test]
+    public async Task CheckMissingSpecialLocationSubpathLeavesDialogOpen()
+    {
+        using var viewModel = new MainWindowViewModel(
+            new DirectoryContentService(), new PreviewService(), new FileOperationService(), new SettingsService());
+        viewModel.ShowGoTo();
+        viewModel.GoToPath = $"home/{Guid.NewGuid():N}";
+
+        Assert.That(await viewModel.SubmitGoToAsync(), Is.False);
+        Assert.That(viewModel.IsGoToVisible, Is.True);
+        Assert.That(viewModel.GoToError, Is.EqualTo("Path not found or unavailable."));
+    }
+
     [Test]
     public async Task CheckInitializeWithFileSelectsFileInContainingFolder()
     {

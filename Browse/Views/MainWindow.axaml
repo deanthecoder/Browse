@@ -267,7 +267,7 @@
       <Border Width="620" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="18" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,90,0,0">
         <StackPanel Spacing="10">
           <TextBlock Text="Go to path" FontSize="17" FontWeight="SemiBold" />
-          <TextBox x:Name="GoToTextBox" Text="{Binding GoToPath}" Watermark="Path or UNC location" KeyDown="OnGoToKeyDown" />
+          <TextBox x:Name="GoToTextBox" Text="{Binding GoToPath}" Watermark="Path, home, downloads, localappdata…" KeyDown="OnGoToKeyDown" />
           <TextBlock Text="{Binding GoToError}" Foreground="#FF7B72" FontSize="11" IsVisible="{Binding GoToError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           <TextBlock Text="Enter to open · Escape to cancel" Classes="muted" FontSize="11" />
         </StackPanel>

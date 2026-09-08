@@ -1292,6 +1292,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         if (path.StartsWith($"~{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path[2..]);
+        path = SpecialLocationResolver.Expand(path);
+        if (string.IsNullOrEmpty(path))
+            return string.Empty;
         return Path.GetFullPath(path);
     }
 

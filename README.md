@@ -21,6 +21,7 @@ It combines that navigation model with the conveniences expected on Windows: F2 
 - Modified-date grouping under **Today**, **Yesterday**, **This Week**, **Last Week**, **This Month**, and **Earlier**. It is enabled by default and can be toggled globally.
 - Arrow-key navigation through folders, including moving above the leftmost column.
 - Go directly to a local, escaped POSIX, or UNC path with `Ctrl+G` / `Command+G`.
+- Go to also accepts `home`, `desktop`, `downloads`, `public`, and `temp` (the system temporary folder), plus Windows locations `appdata`, `localappdata`, and `programdata`. Names are case-insensitive and can include subpaths such as `localappdata\Temp`. Windows uses configured system folder locations; macOS uses `~/Downloads` and `~/Public`. Unavailable locations show the usual path error. Use `./home` to address a relative folder literally named `home`.
 - Filter the active column by any part of a filename with `Ctrl+F` / `Command+F`; press `Escape` to clear and close the filter.
 - Live filesystem watching keeps open columns synchronized with changes made elsewhere.
 
