@@ -30,6 +30,7 @@ public sealed class FileOperationService
     private const int LockViolation = 33;
     private static readonly TimeSpan FileLockRetryDelay = TimeSpan.FromMilliseconds(100);
     private readonly Action<ProcessStartInfo> m_startProcess;
+    private readonly Func<IReadOnlyList<BrowserItem>, FileInfo, CancellationToken, Task> m_createZip;
 
     public FileOperationService() : this(startInfo =>
     {
@@ -38,9 +39,12 @@ public sealed class FileOperationService
     {
     }
 
-    internal FileOperationService(Action<ProcessStartInfo> startProcess)
+    internal FileOperationService(
+        Action<ProcessStartInfo> startProcess,
+        Func<IReadOnlyList<BrowserItem>, FileInfo, CancellationToken, Task> createZip = null)
     {
         m_startProcess = startProcess ?? throw new ArgumentNullException(nameof(startProcess));
+        m_createZip = createZip ?? CreateZipCoreAsync;
     }
 
     public Task CopyAsync(IReadOnlyList<BrowserItem> items, DirectoryInfo destination, bool move, CancellationToken cancellationToken = default) =>
@@ -191,6 +195,9 @@ public sealed class FileOperationService
         Task.Run(() => CalculateFolderSize(directory, cancellationToken), cancellationToken);
 
     public Task CreateZipAsync(IReadOnlyList<BrowserItem> items, FileInfo output, CancellationToken cancellationToken = default) =>
+        m_createZip(items, output, cancellationToken);
+
+    private static Task CreateZipCoreAsync(IReadOnlyList<BrowserItem> items, FileInfo output, CancellationToken cancellationToken) =>
         Task.Run(() =>
         {
             using var archive = ZipFile.Open(output.FullName, ZipArchiveMode.Create);

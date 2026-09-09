@@ -23,6 +23,7 @@ namespace Browse.ViewModels;
 public sealed class FolderColumnViewModel : ViewModelBase
 {
     private IReadOnlyList<BrowserItem> m_allItems = [];
+    private IReadOnlyDictionary<string, string> m_itemActivities = new Dictionary<string, string>();
     private string m_filterText = string.Empty;
     private bool m_isFilterVisible;
     private bool m_isLoading;
@@ -108,6 +109,18 @@ public sealed class FolderColumnViewModel : ViewModelBase
             : remainingItems[Math.Min(firstRemovedIndex, remainingItems.Length - 1)].FullPath;
     }
 
+    internal void SetItemActivities(IReadOnlyDictionary<string, string> activities)
+    {
+        m_itemActivities = activities;
+        ApplyItemActivities();
+    }
+
+    private void ApplyItemActivities()
+    {
+        foreach (var item in Items)
+            item.ActivityText = m_itemActivities.GetValueOrDefault(item.FullPath);
+    }
+
     public void ReplaceItems(IReadOnlyList<BrowserItem> items)
     {
         m_allItems = items.ToArray();
@@ -163,6 +176,7 @@ public sealed class FolderColumnViewModel : ViewModelBase
         }
         while (Items.Count > desired.Length)
             Items.RemoveAt(Items.Count - 1);
+        ApplyItemActivities();
     }
 
     private static bool HasSameDisplayMetadata(BrowserItem first, BrowserItem second) =>

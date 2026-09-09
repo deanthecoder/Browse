@@ -313,6 +313,8 @@ public sealed class MainWindowViewModelTests
             await started.Task.WaitAsync(TimeSpan.FromSeconds(2));
             Assert.That(opening.IsCompleted, Is.False);
             Assert.That(model.StatusText, Does.StartWith("Opening slow.exe"));
+            Assert.That(column.Items[0].IsBusy, Is.True);
+            Assert.That(model.HasPendingOperations, Is.True);
             await model.OpenSelectedAsync();
             Assert.That(launches, Is.EqualTo(1));
             model.SetContextSelection(column, []);
@@ -323,6 +325,42 @@ public sealed class MainWindowViewModelTests
             await opening.WaitAsync(TimeSpan.FromSeconds(2));
         }
         Assert.That(model.StatusText, Is.EqualTo("Opened slow.exe."));
+        Assert.That(column.Items[0].IsBusy, Is.False);
+        Assert.That(model.HasPendingOperations, Is.False);
+    }
+
+    [Test]
+    public async Task CheckEachLaunchIndicatorStopsWhenItsOwnRequestCompletes()
+    {
+        using var temp = new TempDirectory();
+        using var release = new ManualResetEventSlim();
+        var secondStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var service = new FileOperationService(info =>
+        {
+            if (!info.FileName.EndsWith("second.exe", StringComparison.Ordinal))
+                return;
+            secondStarted.TrySetResult();
+            release.Wait(TimeSpan.FromSeconds(5));
+        });
+        using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(), service, new SettingsService());
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([new BrowserItem(new FileInfo(Path.Combine(temp.FullName, "first.exe"))),
+            new BrowserItem(new FileInfo(Path.Combine(temp.FullName, "second.exe")))]);
+        model.Columns.Add(column);
+        model.SetContextSelection(column, column.Items.ToArray());
+        var opening = model.OpenSelectedFileAsync();
+        try
+        {
+            await secondStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.That(column.Items[0].IsBusy, Is.False);
+            Assert.That(column.Items[1].IsBusy, Is.True);
+        }
+        finally
+        {
+            release.Set();
+            await opening.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        Assert.That(model.HasPendingOperations, Is.False);
     }
 
     [TestCase(1223, "Open canceled.")]
@@ -373,6 +411,64 @@ public sealed class MainWindowViewModelTests
         Assert.That(model.StatusText, Does.StartWith("Opened 2 of 3 files."));
         Assert.That(model.StatusText, Does.Contain("Could not open broken.exe"));
         Assert.That(model.Columns, Has.Count.EqualTo(1));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task CheckArchiveActivitySurvivesRefreshAndSelectionChanges(bool fail)
+    {
+        using var temp = new TempDirectory();
+        var finish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        IReadOnlyList<BrowserItem> captured = null;
+        FileInfo output = null;
+        var calls = 0;
+        var service = new FileOperationService(_ => { }, async (items, destination, _) =>
+        {
+            calls++;
+            captured = items;
+            output = destination;
+            await finish.Task;
+            if (fail)
+                throw new IOException("Disk full.");
+            await new FileOperationService().CreateZipAsync(items, destination);
+        });
+        var source = new FileInfo(Path.Combine(temp.FullName, "large.txt"));
+        File.WriteAllText(source.FullName, "Archive contents");
+        using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(), service, new SettingsService());
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([new BrowserItem(source)]);
+        model.Columns.Add(column);
+        model.SetContextSelection(column, [column.Items[0]]);
+        var creation = model.CreateZipAsync();
+        try
+        {
+            Assert.That(column.Items[0].IsBusy, Is.True);
+            Assert.That(model.ActivitySummary, Is.EqualTo("Creating large.zip…"));
+            Assert.That(model.HasPendingOperations, Is.True);
+            await model.CreateZipAsync();
+            Assert.That(calls, Is.EqualTo(1));
+            model.SetContextSelection(column, []);
+            // Simulate a watcher refresh discovering the archive while it is being written.
+            column.ReplaceItems([new BrowserItem(source), new BrowserItem(output)]);
+            Assert.That(column.Items.All(item => item.IsBusy), Is.True);
+            column.FilterText = ".zip";
+            Assert.That(column.Items.Single().IsBusy, Is.True);
+            column.CloseFilter();
+            Assert.That(captured.Select(item => item.Name), Is.EqualTo(new[] { "large.txt" }));
+        }
+        finally
+        {
+            finish.TrySetResult();
+            await creation.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        Assert.That(model.HasPendingOperations, Is.False);
+        Assert.That(column.Items.Any(item => item.IsBusy), Is.False);
+        Assert.That(model.StatusText, Is.EqualTo(fail ? "Could not create large.zip: Disk full." : "Created large.zip."));
+        if (!fail)
+        {
+            using var archive = System.IO.Compression.ZipFile.OpenRead(output.FullName);
+            Assert.That(archive.Entries.Select(entry => entry.FullName), Is.EqualTo(new[] { "large.txt" }));
+        }
     }
 
     [Test]

@@ -37,6 +37,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly SettingsService m_settingsService;
     private readonly List<BrowserItem> m_selectedItems = [];
     private readonly HashSet<string> m_openingPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<string>> m_itemActivities = new(StringComparer.OrdinalIgnoreCase);
+    private bool m_isCreatingZip;
     private readonly List<BrowserItem> m_clipboardItems = [];
     private readonly Dictionary<FolderColumnViewModel, FileSystemWatcher> m_watchers = [];
     private readonly ConcurrentDictionary<FolderColumnViewModel, int> m_watcherGenerations = [];
@@ -82,6 +84,36 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_extensionAliasesText = string.Join(Environment.NewLine, Settings.ExtensionAliases ?? []);
         PopulateSidebar();
     }
+
+    public bool HasPendingOperations => m_itemActivities.Count > 0;
+    public string ActivitySummary => string.Join(" · ", m_itemActivities.Values.SelectMany(labels => labels).Distinct());
+
+    private void UpdateItemActivity(IEnumerable<string> paths, string text, bool active)
+    {
+        foreach (var path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!m_itemActivities.TryGetValue(path, out var labels))
+            {
+                if (!active)
+                    continue;
+                m_itemActivities[path] = labels = [];
+            }
+            if (active)
+                labels.Add(text);
+            else
+                labels.Remove(text);
+            if (labels.Count == 0)
+                m_itemActivities.Remove(path);
+        }
+        var activities = GetItemActivities();
+        foreach (var column in Columns)
+            column.SetItemActivities(activities);
+        OnPropertyChanged(nameof(HasPendingOperations));
+        OnPropertyChanged(nameof(ActivitySummary));
+    }
+
+    private IReadOnlyDictionary<string, string> GetItemActivities() =>
+        m_itemActivities.ToDictionary(pair => pair.Key, pair => string.Join(" · ", pair.Value.Distinct()), StringComparer.OrdinalIgnoreCase);
 
     public BrowserSettings Settings { get; }
     public ObservableCollection<SidebarEntryViewModel> Favorites { get; } = [];
@@ -689,6 +721,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         var opened = 0;
         var errors = new List<string>();
+        UpdateItemActivity(files.Select(item => item.FullPath), "Opening…", true);
         try
         {
             foreach (var item in files)
@@ -705,6 +738,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                         ? files.Length == 1 ? "Open canceled." : $"Opening {item.Name} was canceled."
                         : $"Could not open {item.Name}: {ex.Message}");
                 }
+                finally
+                {
+                    UpdateItemActivity([item.FullPath], "Opening…", false);
+                }
             }
             StatusText = files.Length == 1
                 ? errors.Count == 0 ? $"Opened {files[0].Name}." : errors[0]
@@ -715,6 +752,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         {
             foreach (var item in files)
                 m_openingPaths.Remove(item.FullPath);
+            UpdateItemActivity(files.Select(item => item.FullPath), "Opening…", false);
         }
     }
 
@@ -808,21 +846,32 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public async Task CreateZipAsync()
     {
-        if (m_selectedItems.Count == 0 || m_selectedItems.Any(item => item.IsArchiveEntry))
+        if (m_isCreatingZip || m_selectedItems.Count == 0 || m_selectedItems.Any(item => item.IsArchiveEntry))
             return;
-        var parent = new DirectoryInfo(Path.GetDirectoryName(m_selectedItems[0].FullPath) ?? CurrentPath);
-        var baseName = m_selectedItems.Count == 1 ? Path.GetFileNameWithoutExtension(m_selectedItems[0].Name) : "Archive";
+        var items = m_selectedItems.ToArray();
+        var parent = new DirectoryInfo(Path.GetDirectoryName(items[0].FullPath) ?? CurrentPath);
+        var baseName = items.Length == 1 ? Path.GetFileNameWithoutExtension(items[0].Name) : "Archive";
         var output = new FileInfo(FileOperationService.GetAvailablePath(Path.Combine(parent.FullName, baseName + ".zip")));
+        var paths = items.Select(item => item.FullPath).Append(output.FullName).ToArray();
+        var activity = $"Creating {output.Name}…";
+        m_isCreatingZip = true;
+        UpdateItemActivity(paths, activity, true);
         try
         {
-            await m_fileOperationService.CreateZipAsync(m_selectedItems, output);
-            StatusText = $"Created {output.Name}.";
+            StatusText = activity;
+            await m_fileOperationService.CreateZipAsync(items, output);
             m_directoryService.Invalidate(parent);
             await ReloadCurrentAsync();
+            StatusText = $"Created {output.Name}.";
         }
         catch (Exception ex)
         {
-            StatusText = ex.Message;
+            StatusText = $"Could not create {output.Name}: {ex.Message}";
+        }
+        finally
+        {
+            m_isCreatingZip = false;
+            UpdateItemActivity(paths, activity, false);
         }
     }
 
@@ -1014,6 +1063,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task LoadColumnAsync(FolderColumnViewModel column, CancellationToken cancellationToken)
     {
+        column.SetItemActivities(GetItemActivities());
         column.IsLoading = true;
         column.IsRefreshing = true;
         column.Error = null;

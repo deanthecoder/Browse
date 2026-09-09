@@ -40,7 +40,8 @@ The Info pane gives quick, bounded previews without turning ordinary navigation 
 
 - Multi-selection, copy, cut, paste, rename, and recycle-bin deletion.
 - Drag files and folders within Browse or between Browse and Explorer/Finder.
-- Create ZIP archives and expand them with visible progress.
+- Create ZIP archives with indeterminate activity indicators on the source and output rows, and expand archives with percentage progress.
+- Row and status-bar activity indicators remain visible during app launches and ZIP creation; completion or errors appear in the status bar.
 - Open one or more selected files with their system applications, without blocking Browse while they launch, or open a terminal in the containing folder.
 - Copy one or more fully qualified paths, with quoting suitable for command lines.
 - Advanced commands for MD5, SHA-256, and Base64 output.

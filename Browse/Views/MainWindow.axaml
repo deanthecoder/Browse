@@ -19,6 +19,26 @@
         DragDrop.DragLeave="OnWindowDragLeave"
         DragDrop.Drop="OnWindowDrop"
         Title="{Binding WindowTitle}">
+  <Window.Styles>
+    <Style Selector="icons|MaterialIcon.activitySpinner">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="Foreground" Value="#8DBCEB" />
+      <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    </Style>
+    <Style Selector="icons|MaterialIcon.activitySpinner[IsVisible=True]">
+      <Style.Animations>
+        <Animation Duration="0:0:1" IterationCount="INFINITE">
+          <KeyFrame Cue="0%">
+            <Setter Property="RotateTransform.Angle" Value="0" />
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="RotateTransform.Angle" Value="360" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+  </Window.Styles>
   <Window.Resources>
     <ContextMenu x:Key="ItemContextMenu">
       <MenuItem Header="Open" Click="OnOpenClicked" IsVisible="{Binding CanOpen}" />
@@ -169,7 +189,7 @@
                               <TextBlock Text="{Binding GroupHeading}" Classes="muted" FontSize="10" FontWeight="SemiBold" />
                             </Border>
                             <Border Classes="browserItemRow" Padding="7,5">
-                              <Grid ColumnDefinitions="22,*,Auto"
+                              <Grid ColumnDefinitions="22,*,Auto,Auto"
                                     ColumnSpacing="6"
                                     Tag="{Binding}"
                                     Background="Transparent"
@@ -179,7 +199,13 @@
                                     DragDrop.Drop="OnItemDrop">
                                 <icons:MaterialIcon Grid.Column="0" Kind="{Binding Icon}" Width="18" Height="18" Foreground="{Binding IconBrush}" />
                                 <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{Binding TextBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="2" Text="›" FontSize="18" Classes="muted" IsVisible="{Binding IsDirectory}" />
+                                <icons:MaterialIcon Grid.Column="2" Classes="activitySpinner" Kind="Loading"
+                                                    IsVisible="{Binding IsBusy}" ToolTip.Tip="{Binding ActivityText}">
+                                  <icons:MaterialIcon.RenderTransform>
+                                    <RotateTransform />
+                                  </icons:MaterialIcon.RenderTransform>
+                                </icons:MaterialIcon>
+                                <TextBlock Grid.Column="3" Text="›" FontSize="18" Classes="muted" IsVisible="{Binding IsDirectory}" />
                               </Grid>
                             </Border>
                           </StackPanel>
@@ -255,9 +281,15 @@
     </Grid>
 
     <Border Grid.Row="1" Background="#24272D" BorderBrush="#3B4049" BorderThickness="0,1,0,0" Padding="9,2">
-      <Grid ColumnDefinitions="*,Auto">
-        <TextBlock Text="{Binding StatusText}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Classes="chrome" Padding="3" ToolTip.Tip="Settings" Click="OnSettingsClicked">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7">
+        <icons:MaterialIcon Classes="activitySpinner" Kind="Loading" IsVisible="{Binding HasPendingOperations}"
+                            ToolTip.Tip="{Binding ActivitySummary}">
+          <icons:MaterialIcon.RenderTransform>
+            <RotateTransform />
+          </icons:MaterialIcon.RenderTransform>
+        </icons:MaterialIcon>
+        <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Classes="chrome" Padding="3" ToolTip.Tip="Settings" Click="OnSettingsClicked">
           <icons:MaterialIcon Kind="Cog" Width="16" Height="16" Foreground="#AAB4C2" />
         </Button>
       </Grid>

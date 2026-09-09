@@ -13,6 +13,7 @@ namespace Browse.Models;
 using Avalonia.Media;
 using Browse.Services;
 using DTC.Core.Extensions;
+using DTC.Core.ViewModels;
 using Material.Icons;
 
 /// <summary>
@@ -21,11 +22,24 @@ using Material.Icons;
 /// <remarks>
 /// The model keeps only inexpensive metadata so directory enumeration remains responsive.
 /// </remarks>
-public sealed class BrowserItem
+public sealed class BrowserItem : ViewModelBase
 {
     private static readonly IBrush StandardTextBrush = Brush.Parse("#E6EAF0");
     private static readonly IBrush ArchiveTextBrush = Brush.Parse("#D8C89B");
     private readonly FileTypeAliasMap m_aliases;
+    private string m_activityText;
+
+    public string ActivityText
+    {
+        get => m_activityText;
+        internal set
+        {
+            if (SetField(ref m_activityText, value))
+                OnPropertyChanged(nameof(IsBusy));
+        }
+    }
+
+    public bool IsBusy => !string.IsNullOrEmpty(ActivityText);
 
     public BrowserItem(FileSystemInfo info, FileTypeAliasMap aliases = null, string groupHeading = null)
     {
