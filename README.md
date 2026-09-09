@@ -41,7 +41,7 @@ The Info pane gives quick, bounded previews without turning ordinary navigation 
 - Multi-selection, copy, cut, paste, rename, and recycle-bin deletion.
 - Drag files and folders within Browse or between Browse and Explorer/Finder.
 - Create ZIP archives and expand them with visible progress.
-- Open files with their system application or open a terminal in the containing folder.
+- Open one or more selected files with their system applications, without blocking Browse while they launch, or open a terminal in the containing folder.
 - Copy one or more fully qualified paths, with quoting suitable for command lines.
 - Advanced commands for MD5, SHA-256, and Base64 output.
 - Multiple independent Browse windows, with remembered window size and last location.

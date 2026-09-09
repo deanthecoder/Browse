@@ -342,6 +342,39 @@ public sealed class MainWindowViewModelTests
         Assert.That(model.StatusText, Does.StartWith(expected));
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task CheckOpeningMultipleFilesContinuesAfterFailureAndIgnoresFolders(bool enter)
+    {
+        using var temp = new TempDirectory();
+        var launched = new List<string>();
+        var service = new FileOperationService(info =>
+        {
+            launched.Add(Path.GetFileName(info.FileName));
+            if (info.FileName.EndsWith("broken.exe", StringComparison.Ordinal))
+                throw new IOException("Launch failed.");
+        });
+        using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(), service, new SettingsService());
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([
+            new BrowserItem(new FileInfo(Path.Combine(temp.FullName, "broken.exe"))),
+            new BrowserItem(new DirectoryInfo(Path.Combine(temp.FullName, "folder"))),
+            new BrowserItem(new FileInfo(Path.Combine(temp.FullName, "second.exe"))),
+            new BrowserItem(new FileInfo(Path.Combine(temp.FullName, "third.txt")))]);
+        model.Columns.Add(column);
+        model.SetContextSelection(column, column.Items.ToArray());
+
+        if (enter)
+            await model.OpenSelectedFileAsync();
+        else
+            await model.OpenSelectedAsync();
+
+        Assert.That(launched, Is.EqualTo(new[] { "broken.exe", "second.exe", "third.txt" }));
+        Assert.That(model.StatusText, Does.StartWith("Opened 2 of 3 files."));
+        Assert.That(model.StatusText, Does.Contain("Could not open broken.exe"));
+        Assert.That(model.Columns, Has.Count.EqualTo(1));
+    }
+
     [Test]
     public async Task CheckOpenSelectedFileIgnoresFolder()
     {
