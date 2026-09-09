@@ -128,7 +128,32 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:SidebarEntryViewModel">
                   <Button Tag="{Binding}" Classes="chrome" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnSidebarClicked"
-                          ToolTip.Tip="{Binding Path}" PointerEntered="OnDrivePointerEntered">
+                          PointerEntered="OnDrivePointerEntered">
+                    <ToolTip.Tip>
+                      <Border DataContext="{Binding DriveToolTip}" x:DataType="vm:DriveToolTipViewModel"
+                              Width="250" Padding="12" CornerRadius="6" Background="#2A2E35">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="7">
+                          <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
+                            <icons:MaterialIcon Kind="Harddisk" Width="20" Height="20" Foreground="#8DBCEB" />
+                            <StackPanel Grid.Column="1">
+                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                              <TextBlock Text="{Binding Path}" Classes="muted" FontSize="11" />
+                            </StackPanel>
+                          </Grid>
+                          <ProgressBar Grid.Row="1" Height="7" Minimum="0" Maximum="100"
+                                       Value="{Binding UsedPercentage}" IsIndeterminate="{Binding IsLoading}" />
+                          <Grid Grid.Row="2" ColumnDefinitions="*,Auto" IsVisible="{Binding IsAvailable}">
+                            <TextBlock Text="{Binding UsageText}" FontSize="11" />
+                            <TextBlock Grid.Column="1" Text="{Binding UsedPercentage, StringFormat={}{0:N0}%}"
+                                       FontSize="11" FontWeight="SemiBold" />
+                          </Grid>
+                          <TextBlock Grid.Row="3" Text="{Binding FreeText}" Classes="muted" FontSize="11"
+                                     IsVisible="{Binding IsAvailable}" />
+                          <TextBlock Grid.Row="2" Grid.RowSpan="2" Text="Disk usage unavailable" Classes="muted"
+                                     FontSize="11" IsVisible="{Binding IsUnavailable}" />
+                        </Grid>
+                      </Border>
+                    </ToolTip.Tip>
                     <Grid ColumnDefinitions="24,*" ColumnSpacing="7">
                       <icons:MaterialIcon Grid.Column="0" Kind="Harddisk" Width="18" Height="18" Foreground="#AAB4C2" />
                       <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />

@@ -136,11 +136,16 @@ public sealed class MainWindowViewModelTests
     [Test]
     public void CheckDriveTooltipIncludesCapacityAndUsage()
     {
-        var tip = SidebarEntryViewModel.FormatDriveUsage("C:\\", 1000, 250);
-        Assert.That(tip, Does.StartWith("C:\\\n"));
-        Assert.That(tip, Does.Contain("750 bytes used of"));
-        Assert.That(tip, Does.Contain("75"));
-        Assert.That(tip, Does.EndWith("250 bytes free"));
+        var tip = new DriveToolTipViewModel("OS (C:)", "C:\\");
+        tip.Apply(new DriveToolTipViewModel.DriveUsage(1000, 250));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(tip.IsAvailable, Is.True);
+            Assert.That(tip.UsedPercentage, Is.EqualTo(75));
+            Assert.That(tip.UsageText, Does.StartWith("750 bytes used of"));
+            Assert.That(tip.FreeText, Is.EqualTo("250 bytes free"));
+        });
     }
 
     [TestCase(0, 0)]
@@ -148,15 +153,24 @@ public sealed class MainWindowViewModelTests
     [TestCase(100, 101)]
     public void CheckUnavailableDriveUsageHasReadableFallback(long total, long free)
     {
-        Assert.That(SidebarEntryViewModel.FormatDriveUsage("drive", total, free),
-            Is.EqualTo("drive\nDisk usage unavailable"));
+        var tip = new DriveToolTipViewModel("Drive", "drive");
+        tip.Apply(new DriveToolTipViewModel.DriveUsage(total, free));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(tip.IsAvailable, Is.False);
+            Assert.That(tip.UsageText, Is.EqualTo("Disk usage unavailable"));
+            Assert.That(tip.FreeText, Is.Null);
+        });
     }
 
     [Test]
     public void CheckInvalidDriveDoesNotThrowWhenReadingTooltip()
     {
-        var entry = new SidebarEntryViewModel("Unavailable", "invalid\0drive", true);
-        Assert.That(entry.GetDriveToolTip(), Does.EndWith("Disk usage unavailable"));
+        var tip = new DriveToolTipViewModel("Unavailable", "invalid\0drive");
+
+        Assert.That(async () => await tip.RefreshAsync(), Throws.Nothing);
+        Assert.That(tip.IsAvailable, Is.False);
     }
 
     [Test]
