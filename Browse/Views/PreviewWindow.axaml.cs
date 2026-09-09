@@ -54,8 +54,11 @@ public partial class PreviewWindow : Window
 
     public PreviewWindow(MainWindowViewModel viewModel) : this() => DataContext = viewModel;
 
-    private void OnOpenClicked(object sender, RoutedEventArgs e) =>
-        (DataContext as MainWindowViewModel)?.OpenSelected();
+    private async void OnOpenClicked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel model)
+            await model.OpenSelectedAsync();
+    }
 
     private void OnOpened(object sender, EventArgs e)
     {

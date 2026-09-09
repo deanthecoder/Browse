@@ -415,13 +415,13 @@ public partial class MainWindow : Window
         m_pendingClickItem = null;
     }
 
-    private void OnItemDoubleTapped(object sender, TappedEventArgs e)
+    private async void OnItemDoubleTapped(object sender, TappedEventArgs e)
     {
         if (e.Source is not Visual source ||
             source is not ListBoxItem && source.FindAncestorOfType<ListBoxItem>() == null)
             return;
-        ViewModel.OpenSelected();
         e.Handled = true;
+        await ViewModel.OpenSelectedAsync();
     }
 
     private void OnSettingsClicked(object sender, RoutedEventArgs e) => ViewModel.IsSettingsVisible = true;
@@ -435,7 +435,7 @@ public partial class MainWindow : Window
         if (m_contextDestination != null)
             ViewModel.OpenTerminal(m_contextDestination);
     }
-    private void OnOpenClicked(object sender, RoutedEventArgs e) => ViewModel.OpenSelected();
+    private async void OnOpenClicked(object sender, RoutedEventArgs e) => await ViewModel.OpenSelectedAsync();
     private void OnExpandPreviewClicked(object sender, RoutedEventArgs e)
     {
         ShowExpandedPreview();
@@ -659,7 +659,7 @@ public partial class MainWindow : Window
         }
         else if (!hasModalOverlay && e.KeyModifiers == KeyModifiers.None && e.Key == Key.Enter)
         {
-            ViewModel.OpenSelectedFile();
+            await ViewModel.OpenSelectedFileAsync();
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)

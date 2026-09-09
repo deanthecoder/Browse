@@ -290,6 +290,59 @@ public sealed class MainWindowViewModelTests
     }
 
     [Test]
+    public async Task CheckSlowShellLaunchDoesNotBlockSelectionOrLaunchTwice()
+    {
+        using var temp = new TempDirectory();
+        using var release = new ManualResetEventSlim();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var launches = 0;
+        var service = new FileOperationService(_ =>
+        {
+            Interlocked.Increment(ref launches);
+            started.TrySetResult();
+            release.Wait(TimeSpan.FromSeconds(5));
+        });
+        using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(), service, new SettingsService());
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([new BrowserItem(new FileInfo(Path.Combine(temp.FullName, "slow.exe")))]);
+        model.Columns.Add(column);
+        model.SetContextSelection(column, [column.Items[0]]);
+        var opening = model.OpenSelectedAsync();
+        try
+        {
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.That(opening.IsCompleted, Is.False);
+            Assert.That(model.StatusText, Does.StartWith("Opening slow.exe"));
+            await model.OpenSelectedAsync();
+            Assert.That(launches, Is.EqualTo(1));
+            model.SetContextSelection(column, []);
+        }
+        finally
+        {
+            release.Set();
+            await opening.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        Assert.That(model.StatusText, Is.EqualTo("Opened slow.exe."));
+    }
+
+    [TestCase(1223, "Open canceled.")]
+    [TestCase(2, "Could not open missing.exe:")]
+    public async Task CheckShellLaunchErrorsAreReported(int errorCode, string expected)
+    {
+        using var temp = new TempDirectory();
+        var service = new FileOperationService(_ => throw new System.ComponentModel.Win32Exception(errorCode));
+        using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(), service, new SettingsService());
+        var column = new FolderColumnViewModel(temp);
+        column.ReplaceItems([new BrowserItem(new FileInfo(Path.Combine(temp.FullName, "missing.exe")))]);
+        model.Columns.Add(column);
+        model.SetContextSelection(column, [column.Items[0]]);
+
+        await model.OpenSelectedFileAsync();
+
+        Assert.That(model.StatusText, Does.StartWith(expected));
+    }
+
+    [Test]
     public async Task CheckOpenSelectedFileIgnoresFolder()
     {
         using var temp = new TempDirectory();
@@ -305,7 +358,7 @@ public sealed class MainWindowViewModelTests
         await viewModel.SelectAsync(column, [item]);
         var columns = viewModel.Columns.ToArray();
 
-        viewModel.OpenSelectedFile();
+        await viewModel.OpenSelectedFileAsync();
 
         Assert.Multiple(() =>
         {

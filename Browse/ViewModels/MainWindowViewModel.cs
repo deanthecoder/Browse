@@ -36,6 +36,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ArchiveContentService m_archiveContentService;
     private readonly SettingsService m_settingsService;
     private readonly List<BrowserItem> m_selectedItems = [];
+    private readonly HashSet<string> m_openingPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<BrowserItem> m_clipboardItems = [];
     private readonly Dictionary<FolderColumnViewModel, FileSystemWatcher> m_watchers = [];
     private readonly ConcurrentDictionary<FolderColumnViewModel, int> m_watcherGenerations = [];
@@ -663,38 +664,46 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public void OpenSelected()
+    public async Task OpenSelectedAsync()
     {
         if (m_selectedItems.Count != 1)
             return;
-        if (m_selectedItems[0].IsArchiveEntry)
+        var item = m_selectedItems[0];
+        if (item.IsArchiveEntry)
         {
-            if (m_selectedItems[0].IsDirectory)
-                _ = SelectAsync(Columns.First(column => column.Items.Contains(m_selectedItems[0])), m_selectedItems);
+            if (item.IsDirectory)
+                await SelectAsync(Columns.First(column => column.Items.Contains(item)), [item]);
             return;
         }
-        if (m_selectedItems[0].IsDirectory)
-            _ = NavigateToAsync(m_selectedItems[0].FullPath);
-        else
+        if (item.IsDirectory)
         {
-            try
-            {
-                m_fileOperationService.Open(m_selectedItems[0]);
-            }
-            catch (Exception ex)
-            {
-                StatusText = ex is System.ComponentModel.Win32Exception { NativeErrorCode: 1223 }
-                    ? "Open canceled."
-                    : $"Could not open {m_selectedItems[0].Name}: {ex.Message}";
-            }
+            await NavigateToAsync(item.FullPath);
+            return;
+        }
+        if (!m_openingPaths.Add(item.FullPath))
+            return;
+        try
+        {
+            StatusText = $"Opening {item.Name}…";
+            await m_fileOperationService.OpenAsync(item);
+            StatusText = $"Opened {item.Name}.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = ex is System.ComponentModel.Win32Exception { NativeErrorCode: 1223 }
+                ? "Open canceled."
+                : $"Could not open {item.Name}: {ex.Message}";
+        }
+        finally
+        {
+            m_openingPaths.Remove(item.FullPath);
         }
     }
 
-    public void OpenSelectedFile()
-    {
-        if (m_selectedItems.Count == 1 && !m_selectedItems[0].IsDirectory)
-            OpenSelected();
-    }
+    public Task OpenSelectedFileAsync() =>
+        m_selectedItems.Count == 1 && !m_selectedItems[0].IsDirectory
+            ? OpenSelectedAsync()
+            : Task.CompletedTask;
 
     private async Task<string> GetHashTextAsync(HashAlgorithmName algorithm, string displayName)
     {

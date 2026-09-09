@@ -29,6 +29,20 @@ public sealed class FileOperationService
     private const int SharingViolation = 32;
     private const int LockViolation = 33;
     private static readonly TimeSpan FileLockRetryDelay = TimeSpan.FromMilliseconds(100);
+    private readonly Action<ProcessStartInfo> m_startProcess;
+
+    public FileOperationService() : this(startInfo =>
+    {
+        using var process = Process.Start(startInfo);
+    })
+    {
+    }
+
+    internal FileOperationService(Action<ProcessStartInfo> startProcess)
+    {
+        m_startProcess = startProcess ?? throw new ArgumentNullException(nameof(startProcess));
+    }
+
     public Task CopyAsync(IReadOnlyList<BrowserItem> items, DirectoryInfo destination, bool move, CancellationToken cancellationToken = default) =>
         CopyAsync(items, destination, move, false, cancellationToken);
 
@@ -269,11 +283,13 @@ public sealed class FileOperationService
             }
         }, cancellationToken);
 
-    public void Open(BrowserItem item)
+    /// <summary>Opens a file with its associated application without blocking the caller.</summary>
+    /// <remarks>Shell activation can block while Windows checks an executable or contacts an application.</remarks>
+    public Task OpenAsync(BrowserItem item) => Task.Run(() =>
     {
         var startInfo = new ProcessStartInfo(item.FullPath) { UseShellExecute = true };
-        Process.Start(startInfo);
-    }
+        m_startProcess(startInfo);
+    });
 
     public async Task<string> CalculateHashAsync(
         FileInfo file,
