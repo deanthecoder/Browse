@@ -65,10 +65,18 @@ public sealed class MultiplePreviewContent(string name, string details)
 /// <remarks>
 /// Flat folders can include their cheaply calculated size; recursive enumeration remains opt-in.
 /// </remarks>
-public sealed class FolderPreviewContent(string name, string path, string details, long? size = null)
+public sealed class FolderPreviewContent(
+    string name,
+    string path,
+    string details,
+    long? size = null,
+    long? fileCount = null,
+    long? folderCount = null)
     : PreviewContent(name, path, details)
 {
     public long? Size { get; } = size;
+    public long? FileCount { get; } = fileCount;
+    public long? FolderCount { get; } = folderCount;
 }
 
 /// <summary>

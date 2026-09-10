@@ -25,29 +25,33 @@ public sealed class FolderPreviewProvider : IPreviewProvider
 
     public async Task<PreviewContent> CreateAsync(BrowserItem item, CancellationToken cancellationToken)
     {
-        var size = await Task.Run(
-            () => TryCalculateFlatFolderSize(new DirectoryInfo(item.FullPath), cancellationToken),
+        var statistics = await Task.Run(
+            () => TryCalculateFlatFolderStatistics(new DirectoryInfo(item.FullPath), cancellationToken),
             cancellationToken);
         return new FolderPreviewContent(
             item.Name,
             item.FullPath,
             $"Folder · Modified {item.LastWriteTime:g}",
-            size);
+            statistics?.Size,
+            statistics?.FileCount,
+            statistics?.FolderCount);
     }
 
-    private static long? TryCalculateFlatFolderSize(DirectoryInfo directory, CancellationToken cancellationToken)
+    private static FolderStatistics? TryCalculateFlatFolderStatistics(DirectoryInfo directory, CancellationToken cancellationToken)
     {
         try
         {
             long size = 0;
+            long fileCount = 0;
             foreach (var entry in directory.EnumerateFileSystemInfos())
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (entry is DirectoryInfo)
                     return null;
                 size = checked(size + ((FileInfo)entry).Length);
+                fileCount++;
             }
-            return size;
+            return new FolderStatistics(size, fileCount, 0);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

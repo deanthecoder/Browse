@@ -515,8 +515,8 @@ public partial class MainWindow : Window
     private async void OnExpandZipClicked(object sender, RoutedEventArgs e) => await ViewModel.ExpandZipAsync();
     private async void OnDeleteClicked(object sender, RoutedEventArgs e)
     {
-        await ViewModel.DeleteSelectionAsync();
         CloseContextMenu();
+        await ViewModel.DeleteSelectionAsync();
     }
     private async void OnCopyPathsClicked(object sender, RoutedEventArgs e) => await CopyTextAsync(ViewModel.GetSelectedPaths());
     private async void OnCopyMd5Clicked(object sender, RoutedEventArgs e) => await CopyGeneratedTextAsync(ViewModel.GetMd5TextAsync());

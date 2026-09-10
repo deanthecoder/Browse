@@ -93,7 +93,12 @@ public sealed class PreviewServiceTests
 
         var result = (FolderPreviewContent)await new PreviewService().CreateAsync([new BrowserItem(temp)]);
 
-        Assert.That(result.Size, Is.EqualTo(7));
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Size, Is.EqualTo(7));
+            Assert.That(result.FileCount, Is.EqualTo(2));
+            Assert.That(result.FolderCount, Is.Zero);
+        });
     }
 
     [Test]
@@ -106,6 +111,8 @@ public sealed class PreviewServiceTests
         var result = (FolderPreviewContent)await new PreviewService().CreateAsync([new BrowserItem(temp)]);
 
         Assert.That(result.Size, Is.Null);
+        Assert.That(result.FileCount, Is.Null);
+        Assert.That(result.FolderCount, Is.Null);
     }
 
     [Test]

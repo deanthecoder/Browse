@@ -34,7 +34,7 @@ The Info pane gives quick, bounded previews without turning ordinary navigation 
 - Plain text, Markdown, rendered HTML, JSON, XML, and source code with syntax highlighting.
 - Conventional offset/hex/ASCII views for unknown binary files.
 - ZIP archive contents and Windows executable metadata.
-- File dimensions, size, modified time, image bit depth, and on-demand folder-size calculation.
+- File dimensions, size, modified time, image bit depth, and on-demand folder-size calculation with file and folder counts.
 
 ### Real file management
 

@@ -191,8 +191,13 @@ public sealed class FileOperationService
             File.Move(item.FullPath, destination);
     });
 
-    public Task<long> CalculateFolderSizeAsync(DirectoryInfo directory, CancellationToken cancellationToken = default) =>
-        Task.Run(() => CalculateFolderSize(directory, cancellationToken), cancellationToken);
+    public async Task<long> CalculateFolderSizeAsync(DirectoryInfo directory, CancellationToken cancellationToken = default) =>
+        (await CalculateFolderStatisticsAsync(directory, cancellationToken)).Size;
+
+    public Task<FolderStatistics> CalculateFolderStatisticsAsync(
+        DirectoryInfo directory,
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => CalculateFolderStatistics(directory, cancellationToken), cancellationToken);
 
     public Task CreateZipAsync(IReadOnlyList<BrowserItem> items, FileInfo output, CancellationToken cancellationToken = default) =>
         m_createZip(items, output, cancellationToken);
@@ -369,9 +374,11 @@ public sealed class FileOperationService
         }
     }
 
-    private static long CalculateFolderSize(DirectoryInfo directory, CancellationToken cancellationToken)
+    private static FolderStatistics CalculateFolderStatistics(DirectoryInfo directory, CancellationToken cancellationToken)
     {
-        long total = 0;
+        long totalSize = 0;
+        long fileCount = 0;
+        long folderCount = 0;
         IEnumerable<FileSystemInfo> children;
         try
         {
@@ -379,7 +386,7 @@ public sealed class FileOperationService
         }
         catch (Exception) when (!cancellationToken.IsCancellationRequested)
         {
-            return 0;
+            return new FolderStatistics(0, 0, 0);
         }
         foreach (var child in children)
         {
@@ -387,16 +394,28 @@ public sealed class FileOperationService
             try
             {
                 if (child is FileInfo file)
-                    total += file.Length;
-                else if (!child.Attributes.HasFlag(FileAttributes.ReparsePoint))
-                    total += CalculateFolderSize((DirectoryInfo)child, cancellationToken);
+                {
+                    totalSize += file.Length;
+                    fileCount++;
+                }
+                else
+                {
+                    folderCount++;
+                    if (!child.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                    {
+                        var nested = CalculateFolderStatistics((DirectoryInfo)child, cancellationToken);
+                        totalSize += nested.Size;
+                        fileCount += nested.FileCount;
+                        folderCount += nested.FolderCount;
+                    }
+                }
             }
             catch (Exception) when (!cancellationToken.IsCancellationRequested)
             {
                 // Inaccessible items do not prevent a useful partial total.
             }
         }
-        return total;
+        return new FolderStatistics(totalSize, fileCount, folderCount);
     }
 
     private static void CopyDirectory(DirectoryInfo source, DirectoryInfo destination, CancellationToken cancellationToken)
@@ -524,3 +543,11 @@ public sealed class FileOperationService
         return fullPath.StartsWith(prefix, comparison);
     }
 }
+
+/// <summary>
+/// Describes the recursively calculated size and contents of a folder.
+/// </summary>
+/// <remarks>
+/// Counts are collected during the existing size traversal, avoiding a second filesystem scan.
+/// </remarks>
+public readonly record struct FolderStatistics(long Size, long FileCount, long FolderCount);

@@ -66,6 +66,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private string m_newFolderName;
     private DirectoryInfo m_newFolderDestination;
     private string m_folderSizeExact;
+    private string m_folderItemCount;
     private long m_lastPreviewSelectionTime;
 
     public MainWindowViewModel(
@@ -348,6 +349,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         private set => SetField(ref m_folderSizeExact, value);
     }
 
+    public string FolderItemCount
+    {
+        get => m_folderItemCount;
+        private set => SetField(ref m_folderItemCount, value);
+    }
+
     public bool ClipboardMatches(IEnumerable<string> paths)
     {
         if (m_clipboardItems.Any(item => item.IsArchiveEntry))
@@ -468,6 +475,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_selectedItems.AddRange(selection);
         FolderSize = null;
         FolderSizeExact = null;
+        FolderItemCount = null;
         _ = UpdatePreviewAsync();
 
         if (selection.Count == 1 && selection[0].IsArchiveEntry && selection[0].IsDirectory)
@@ -507,6 +515,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_selectedItems.AddRange(selection);
         FolderSize = null;
         FolderSizeExact = null;
+        FolderItemCount = null;
         _ = UpdatePreviewAsync();
         CurrentPath = selection.Length == 1 && selection[0].IsArchiveEntry
             ? column.Archive?.Directory?.FullName
@@ -831,18 +840,28 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         if (m_selectedItems.Count != 1 || !m_selectedItems[0].IsDirectory)
             return;
+        var item = m_selectedItems[0];
         FolderSize = "Calculating…";
+        FolderSizeExact = null;
+        FolderItemCount = null;
         try
         {
-            var bytes = await m_fileOperationService.CalculateFolderSizeAsync(new DirectoryInfo(m_selectedItems[0].FullPath));
-            FolderSize = bytes.ToSize();
-            FolderSizeExact = $"{bytes:N0} bytes";
+            var statistics = await m_fileOperationService.CalculateFolderStatisticsAsync(new DirectoryInfo(item.FullPath));
+            if (m_selectedItems.Count != 1 || !string.Equals(m_selectedItems[0].FullPath, item.FullPath, StringComparison.OrdinalIgnoreCase))
+                return;
+            FolderSize = statistics.Size.ToSize();
+            FolderSizeExact = $"{statistics.Size:N0} bytes";
+            FolderItemCount = FormatFolderItemCount(statistics.FileCount, statistics.FolderCount);
         }
         catch (Exception ex)
         {
             FolderSize = ex.Message;
         }
     }
+
+    internal static string FormatFolderItemCount(long fileCount, long folderCount) =>
+        $"{fileCount:N0} {(fileCount == 1 ? "file" : "files")} · " +
+        $"{folderCount:N0} {(folderCount == 1 ? "folder" : "folders")}";
 
     public async Task CreateZipAsync()
     {
@@ -916,9 +935,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(path => new DirectoryInfo(path))
             .ToArray();
+        var activity = items.Length == 1 ? $"Deleting {items[0].Name}…" : $"Deleting {items.Length:N0} items…";
         try
         {
             m_isDeleting = true;
+            UpdateItemActivity(items.Select(item => item.FullPath), activity, true);
             m_previewCancellation.Cancel();
             Preview = new EmptyPreviewContent();
             StatusText = $"Moving {items.Length:N0} item(s) to the recycle bin…";
@@ -944,6 +965,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         finally
         {
             m_isDeleting = false;
+            UpdateItemActivity(items.Select(item => item.FullPath), activity, false);
             _ = UpdatePreviewAsync();
         }
     }
@@ -1154,10 +1176,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 cancellationToken.ThrowIfCancellationRequested();
             }
             Preview = preview;
-            if (preview is FolderPreviewContent { Size: { } bytes })
+            if (preview is FolderPreviewContent { Size: { } bytes } folderPreview)
             {
                 FolderSize = bytes.ToSize();
                 FolderSizeExact = $"{bytes:N0} bytes";
+                if (folderPreview.FileCount is { } fileCount && folderPreview.FolderCount is { } folderCount)
+                    FolderItemCount = FormatFolderItemCount(fileCount, folderCount);
             }
         }
         catch (OperationCanceledException)
@@ -1281,6 +1305,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         HasSelection = false;
         FolderSize = null;
         FolderSizeExact = null;
+        FolderItemCount = null;
     }
 
     private void SaveSettingsAndReload()

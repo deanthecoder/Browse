@@ -48,9 +48,14 @@ public sealed class FileOperationServiceTests
         File.WriteAllBytes(Path.Combine(root.FullName, "a.bin"), new byte[13]);
         File.WriteAllBytes(Path.Combine(nested.FullName, "b.bin"), new byte[29]);
 
-        var size = await new FileOperationService().CalculateFolderSizeAsync(root);
+        var statistics = await new FileOperationService().CalculateFolderStatisticsAsync(root);
 
-        Assert.That(size, Is.EqualTo(42));
+        Assert.Multiple(() =>
+        {
+            Assert.That(statistics.Size, Is.EqualTo(42));
+            Assert.That(statistics.FileCount, Is.EqualTo(2));
+            Assert.That(statistics.FolderCount, Is.EqualTo(1));
+        });
     }
 
     [Test]

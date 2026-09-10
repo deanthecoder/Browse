@@ -96,6 +96,14 @@ public sealed class MainWindowViewModelTests
         Assert.That(column.Items[2], Is.SameAs(selected));
     }
 
+    [TestCase(1, 1, "1 file · 1 folder")]
+    [TestCase(0, 2, "0 files · 2 folders")]
+    [TestCase(1234, 0, "1,234 files · 0 folders")]
+    public void CheckFolderItemCountUsesReadablePluralization(long files, long folders, string expected)
+    {
+        Assert.That(MainWindowViewModel.FormatFolderItemCount(files, folders), Is.EqualTo(expected));
+    }
+
     [Test]
     public void CheckColumnFilterMatchesNamesAndSurvivesRefresh()
     {
@@ -751,6 +759,9 @@ public sealed class MainWindowViewModelTests
             Assert.That(provider.Cancellation.IsCancellationRequested, Is.True);
             Assert.That(deletion.IsCompleted, Is.False, "Cancellation alone must not start deletion.");
             Assert.That(File.Exists(file.FullName), Is.True);
+            Assert.That(column.Items[0].IsBusy, Is.True);
+            Assert.That(column.Items[0].ActivityText, Is.EqualTo("Deleting locked.exe…"));
+            Assert.That(model.HasPendingOperations, Is.True);
             await model.DeleteSelectionAsync();
             Assert.That(deletion.IsCompleted, Is.False, "Repeated Delete must not start a second operation.");
         }
@@ -761,6 +772,8 @@ public sealed class MainWindowViewModelTests
             provider.Finished.TrySetResult();
             await deletion.WaitAsync(TimeSpan.FromSeconds(5));
         }
+        Assert.That(column.Items.Any(item => item.IsBusy), Is.False);
+        Assert.That(model.HasPendingOperations, Is.False);
     }
 
     /// <summary>Simulates native preview work that cannot stop immediately on cancellation.</summary>
