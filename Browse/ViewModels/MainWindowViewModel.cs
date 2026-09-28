@@ -233,6 +233,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(PreviewContent));
             OnPropertyChanged(nameof(PreviewPath));
             OnPropertyChanged(nameof(PreviewDetails));
+            OnPropertyChanged(nameof(PreviewSizeExact));
             OnPropertyChanged(nameof(PreviewImage));
             OnPropertyChanged(nameof(IsTextPreview));
             OnPropertyChanged(nameof(IsCodePreview));
@@ -260,6 +261,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public string PreviewPath => Preview.Path;
     public string PreviewDetails => Preview.Details;
+    public string PreviewSizeExact
+    {
+        get
+        {
+            var size = Preview switch
+            {
+                MultiplePreviewContent multiple => multiple.Size,
+                ArchiveEntryPreviewContent archive => archive.Item.Size,
+                _ => Preview.FileSize
+            };
+            return size.HasValue ? $"{size.Value:N0} bytes" : null;
+        }
+    }
 
     public MaterialIconKind PreviewIcon
     {
@@ -1205,7 +1219,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 item.Name,
                 item.FullPath,
                 $"{item.Size?.ToSize() ?? "Unknown size"} · Modified {item.LastWriteTime:g}",
-                "Rendering PDF preview…")
+                "Rendering PDF preview…") { FileSize = item.Size }
             : new EmptyPreviewContent(item.Name, item.FullPath);
 
     private void PopulateSidebar()

@@ -20,6 +20,32 @@ namespace Browse.Tests;
 [TestFixture]
 public sealed class MainWindowViewModelTests
 {
+    [Test]
+    public async Task CheckPreviewTooltipUsesExactFileBytesAndClearsWithSelection()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "sample.txt"));
+        await File.WriteAllBytesAsync(file.FullName, new byte[12345]);
+        using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(),
+            new FileOperationService(), new SettingsService());
+        var column = new FolderColumnViewModel(new DirectoryInfo(temp.FullName));
+        var item = new BrowserItem(file);
+        column.ReplaceItems([item]);
+        model.Columns.Add(column);
+        var previewReady = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        model.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.PreviewSizeExact) && model.PreviewSizeExact != null)
+                previewReady.TrySetResult();
+        };
+
+        await model.SelectAsync(column, [item]);
+        await previewReady.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.That(model.PreviewSizeExact, Is.EqualTo($"{12345:N0} bytes"));
+        await model.SelectAsync(column, []);
+        Assert.That(model.PreviewSizeExact, Is.Null);
+    }
+
     [TestCase("setup.zip")]
     [TestCase("setup.ZIP")]
     [TestCase("notes.txt")]

@@ -50,7 +50,7 @@ public sealed class PreviewService
             var fileCount = items.Count(item => !item.IsDirectory);
             var folderCount = items.Count - fileCount;
             var files = items.Where(item => !item.IsDirectory).ToArray();
-            var size = files.All(item => item.Size.HasValue) ? files.Sum(item => item.Size.Value) : (long?)null;
+            var size = fileCount > 0 && files.All(item => item.Size.HasValue) ? files.Sum(item => item.Size.Value) : (long?)null;
             var sizeDetails = fileCount == 0 ? string.Empty :
                 $" · {size?.ToSize() ?? "Unknown size"}{(folderCount > 0 ? " in selected files" : string.Empty)}";
             return new MultiplePreviewContent(
@@ -62,8 +62,12 @@ public sealed class PreviewService
         foreach (var provider in m_providers)
         {
             if (await provider.CanPreviewAsync(item, cancellationToken))
-                return await provider.CreateAsync(item, cancellationToken);
+            {
+                var preview = await provider.CreateAsync(item, cancellationToken);
+                preview.FileSize = item.Size;
+                return preview;
+            }
         }
-        return new EmptyPreviewContent(item.Name, item.FullPath);
+        return new EmptyPreviewContent(item.Name, item.FullPath) { FileSize = item.Size };
     }
 }

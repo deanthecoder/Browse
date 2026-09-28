@@ -23,6 +23,7 @@ public abstract class PreviewContent(string name, string path = null, string det
     public string Name { get; } = name;
     public string Path { get; } = path;
     public string Details { get; } = details;
+    public long? FileSize { get; internal set; }
     public virtual bool CanExpand => false;
     public virtual void Dispose()
     {

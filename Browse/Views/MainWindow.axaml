@@ -261,7 +261,7 @@
                        TextTrimming="CharacterEllipsis"
                        VerticalAlignment="Center" />
           </Grid>
-          <TextBlock Grid.Row="1" Text="{Binding PreviewDetails}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,10" />
+          <TextBlock Grid.Row="1" Text="{Binding PreviewDetails}" ToolTip.Tip="{Binding PreviewSizeExact}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,10" />
           <Border Grid.Row="2" Background="#121417" BorderBrush="#343941" BorderThickness="1" CornerRadius="5" Padding="10">
             <Grid>
               <Button x:Name="ExpandPreviewButton" HorizontalAlignment="Right" VerticalAlignment="Bottom" ZIndex="2" Classes="chrome" Background="#D924272D" Padding="5" ToolTip.Tip="Open larger preview..." Click="OnExpandPreviewClicked" IsVisible="{Binding CanExpandPreview}">
