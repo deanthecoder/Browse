@@ -20,6 +20,34 @@ namespace Browse.Tests;
 [TestFixture]
 public sealed class MainWindowViewModelTests
 {
+    [TestCase("setup.zip")]
+    [TestCase("setup.ZIP")]
+    [TestCase("notes.txt")]
+    public async Task CheckArchiveFileSelectionKeepsArchiveColumn(string entryName)
+    {
+        using var temp = new TempDirectory();
+        var archive = new FileInfo(Path.Combine(temp.FullName, "artifacts.zip"));
+        using (var zip = System.IO.Compression.ZipFile.Open(archive.FullName, System.IO.Compression.ZipArchiveMode.Create))
+            zip.CreateEntry(entryName);
+        using var archiveService = new ArchiveContentService();
+        using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(),
+            new FileOperationService(), new SettingsService());
+        var column = new FolderColumnViewModel(archive, string.Empty);
+        column.ReplaceItems(await archiveService.GetItemsAsync(archive, string.Empty));
+        model.Columns.Add(column);
+        var item = column.Items.Single();
+
+        await model.SelectAsync(column, [item]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(model.Columns, Is.EqualTo(new[] { column }));
+            Assert.That(model.SelectedItems, Is.EqualTo(new[] { item }));
+            Assert.That(model.CurrentPath, Is.EqualTo(temp.FullName));
+            Assert.That(model.Preview, Is.TypeOf<ArchiveEntryPreviewContent>());
+        });
+    }
+
     [Test]
     public void CheckMultiplePathsAreSpaceSeparatedAndQuoted()
     {

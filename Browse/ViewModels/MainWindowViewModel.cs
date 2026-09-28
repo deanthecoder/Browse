@@ -483,7 +483,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             CurrentPath = column.Archive?.Directory?.FullName ?? CurrentPath;
             await AddArchiveColumnAsync(new FileInfo(selection[0].ArchivePath), selection[0].ArchiveEntryPath, m_navigationCancellation.Token);
         }
-        else if (selection.Count == 1 && selection[0].IsZipArchive)
+        else if (selection.Count == 1 && selection[0].IsZipArchive && !selection[0].IsArchiveEntry)
         {
             CurrentPath = column.Directory.FullName;
             await AddArchiveColumnAsync(new FileInfo(selection[0].FullPath), string.Empty, m_navigationCancellation.Token);
