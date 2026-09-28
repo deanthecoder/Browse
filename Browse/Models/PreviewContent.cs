@@ -56,8 +56,11 @@ public sealed class LoadingPreviewContent(string name, string path, string detai
 /// <remarks>
 /// Multiple selections intentionally avoid expensive per-item preview work.
 /// </remarks>
-public sealed class MultiplePreviewContent(string name, string details)
-    : PreviewContent(name, details: details);
+public sealed class MultiplePreviewContent(string name, string details, long? size = null)
+    : PreviewContent(name, details: details)
+{
+    public long? Size { get; } = size;
+}
 
 /// <summary>
 /// Describes a selected folder.

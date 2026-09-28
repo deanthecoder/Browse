@@ -24,6 +24,21 @@ namespace Browse.Tests;
 public sealed class PreviewServiceTests
 {
     [Test]
+    public async Task CheckMultipleSelectionReportsOnlySelectedFileSizes()
+    {
+        using var temp = new TempDirectory();
+        var first = new FileInfo(Path.Combine(temp.FullName, "first.txt"));
+        var second = new FileInfo(Path.Combine(temp.FullName, "second.txt"));
+        await File.WriteAllTextAsync(first.FullName, "123");
+        await File.WriteAllTextAsync(second.FullName, "4567");
+        using var preview = (MultiplePreviewContent)await new PreviewService().CreateAsync(
+            [new BrowserItem(first), new BrowserItem(second), new BrowserItem(new DirectoryInfo(temp.FullName))]);
+
+        Assert.That(preview.Size, Is.EqualTo(7));
+        Assert.That(preview.Details, Does.StartWith("1 folders · 2 files · ").And.EndsWith(" in selected files"));
+    }
+
+    [Test]
     public async Task CheckFirstMatchingProviderCreatesPreview()
     {
         using var temp = new TempDirectory();

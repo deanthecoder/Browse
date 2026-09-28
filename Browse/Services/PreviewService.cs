@@ -10,6 +10,7 @@
 
 using Browse.Models;
 using Browse.Services.Previews;
+using DTC.Core.Extensions;
 
 namespace Browse.Services;
 
@@ -48,9 +49,13 @@ public sealed class PreviewService
         {
             var fileCount = items.Count(item => !item.IsDirectory);
             var folderCount = items.Count - fileCount;
+            var files = items.Where(item => !item.IsDirectory).ToArray();
+            var size = files.All(item => item.Size.HasValue) ? files.Sum(item => item.Size.Value) : (long?)null;
+            var sizeDetails = fileCount == 0 ? string.Empty :
+                $" · {size?.ToSize() ?? "Unknown size"}{(folderCount > 0 ? " in selected files" : string.Empty)}";
             return new MultiplePreviewContent(
                 $"{items.Count:N0} selected",
-                $"{folderCount:N0} folders · {fileCount:N0} files");
+                $"{folderCount:N0} folders · {fileCount:N0} files{sizeDetails}", size);
         }
 
         var item = items[0].Refresh();
