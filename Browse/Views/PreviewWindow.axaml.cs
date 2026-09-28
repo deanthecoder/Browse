@@ -206,6 +206,18 @@ public partial class PreviewWindow : Window
         }
         if (preview is ImagePreviewContent image)
         {
+            if (item?.EffectiveExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                try
+                {
+                    return await PdfPreviewViewer.CreateAsync((FileInfo)item.Info, cancellationToken);
+                }
+                finally
+                {
+                    if (ownsPreviewImage)
+                        image.Dispose();
+                }
+            }
             if (item != null && ImagePreviewProvider.Extensions.Contains(item.EffectiveExtension))
             {
                 try

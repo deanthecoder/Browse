@@ -34,6 +34,7 @@ internal sealed class ImagePreviewViewer : UserControl, IDisposable
     private readonly TextBlock m_zoomLabel;
     private double m_zoom = 1;
     private bool m_fitToWindow = true;
+    private bool m_disposed;
     private double? m_pinchStartZoom;
     private Point? m_panStart;
     private Vector m_panStartOffset;
@@ -110,10 +111,16 @@ internal sealed class ImagePreviewViewer : UserControl, IDisposable
     internal static BitmapInterpolationMode GetInterpolationMode(double zoom) =>
         zoom > 1 ? BitmapInterpolationMode.None : BitmapInterpolationMode.HighQuality;
 
-    private void ZoomToFit() => SetZoom(GetFitZoom(m_bitmap.PixelSize, m_scrollViewer.Viewport), true);
+    private void ZoomToFit()
+    {
+        if (!m_disposed)
+            SetZoom(GetFitZoom(m_bitmap.PixelSize, m_scrollViewer.Viewport), true);
+    }
 
     private void SetZoom(double zoom, bool fitToWindow, Point? anchor = null)
     {
+        if (m_disposed)
+            return;
         var previousZoom = m_zoom;
         m_zoom = Math.Clamp(zoom, MinimumZoom, MaximumZoom);
         m_fitToWindow = fitToWindow;
@@ -195,6 +202,9 @@ internal sealed class ImagePreviewViewer : UserControl, IDisposable
 
     public void Dispose()
     {
+        if (m_disposed)
+            return;
+        m_disposed = true;
         m_image.Source = null;
         if (m_ownsBitmap)
             m_bitmap.Dispose();

@@ -17,6 +17,9 @@ using Browse.Services;
 using Browse.Services.Previews;
 using Browse.Services.Thumbnails;
 using DTC.Core;
+using Browse.Views;
+using Avalonia.Controls;
+using Avalonia.VisualTree;
 
 namespace Browse.Tests;
 
@@ -283,17 +286,67 @@ public sealed class PreviewServiceTests
         Assert.That(result, Is.EqualTo(expected));
     }
 
-    private static void WriteSamplePdf(FileInfo file)
+    [Test]
+    public async Task CheckExpandedPdfNavigatesPagesAndStopsAtDocumentBoundaries()
+    {
+        using var temp = new TempDirectory();
+        var file = new FileInfo(Path.Combine(temp.FullName, "two-pages.pdf"));
+        WriteSamplePdf(file, true);
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
+        await session.Dispatch(async () =>
+        {
+            using var viewer = await PdfPreviewViewer.CreateAsync(file, CancellationToken.None);
+            var window = new Window { Content = viewer };
+            window.Show();
+            try
+            {
+                var buttons = viewer.GetVisualDescendants().OfType<Button>().ToArray();
+                var previous = buttons.Single(button => Equals(button.Content, "Previous"));
+                var next = buttons.Single(button => Equals(button.Content, "Next"));
+                Assert.That(viewer.PageCount, Is.EqualTo(2));
+                Assert.That(previous.IsEnabled, Is.False);
+                Assert.That(next.IsEnabled, Is.True);
+                await viewer.ShowPageAsync(1);
+                Assert.That(viewer.PageIndex, Is.EqualTo(1));
+                Assert.That(previous.IsEnabled, Is.True);
+                Assert.That(next.IsEnabled, Is.False);
+                window.UpdateLayout();
+                var image = viewer.GetVisualDescendants().OfType<Image>().Single();
+                Assert.That(image.Source, Is.Not.Null);
+                var rendered = await PdfPreviewProvider.RenderPageAsync(file, 1, 1800, 96, CancellationToken.None);
+                using (rendered.Bitmap)
+                {
+                    Assert.That(rendered.Result.PageWidth, Is.EqualTo(100));
+                    Assert.That(rendered.Result.PageHeight, Is.EqualTo(200));
+                }
+                await viewer.ShowPageAsync(2);
+                Assert.That(viewer.PageIndex, Is.EqualTo(1));
+                await viewer.ShowPageAsync(0);
+                Assert.That(viewer.PageIndex, Is.Zero);
+                await viewer.ShowPageAsync(-1);
+                Assert.That(viewer.PageIndex, Is.Zero);
+            }
+            finally
+            {
+                window.Close();
+            }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    private static void WriteSamplePdf(FileInfo file, bool twoPages = false)
     {
         const string pageContent = "BT /F1 18 Tf 20 50 Td (Browse PDF preview) Tj ET";
         var objects = new[]
         {
             "<< /Type /Catalog /Pages 2 0 R >>",
-            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            twoPages ? "<< /Type /Pages /Kids [3 0 R 6 0 R] /Count 2 >>" : "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
             $"<< /Length {pageContent.Length} >>\nstream\n{pageContent}\nendstream",
             "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
         };
+        if (twoPages)
+            objects = [..objects, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>"];
         var pdf = new StringBuilder("%PDF-1.4\n");
         var offsets = new List<int>();
         for (var index = 0; index < objects.Length; index++)

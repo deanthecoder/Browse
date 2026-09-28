@@ -59,8 +59,15 @@ public sealed class PdfPreviewProvider : IPreviewProvider
         }
     }
 
-    internal static async Task<RenderedPdfPage> RenderFirstPageAsync(
+    internal static Task<RenderedPdfPage> RenderFirstPageAsync(
         FileInfo file,
+        int maximumDimension,
+        int dpi,
+        CancellationToken cancellationToken) => RenderPageAsync(file, 0, maximumDimension, dpi, cancellationToken);
+
+    internal static async Task<RenderedPdfPage> RenderPageAsync(
+        FileInfo file,
+        int pageIndex,
         int maximumDimension,
         int dpi,
         CancellationToken cancellationToken)
@@ -80,7 +87,8 @@ public sealed class PdfPreviewProvider : IPreviewProvider
                 bitmapPath,
                 metadataPath,
                 maximumDimension,
-                dpi));
+                dpi,
+                pageIndex));
             if (process == null)
                 throw new PdfRenderException("The PDF preview worker could not be started.");
 
@@ -99,7 +107,7 @@ public sealed class PdfPreviewProvider : IPreviewProvider
                 throw;
             }
 
-            if (process.ExitCode != 0 || !File.Exists(bitmapPath) || !File.Exists(metadataPath))
+            if (process.ExitCode != 0 || !File.Exists(metadataPath))
                 throw new PdfRenderException("The PDF could not be rendered safely.");
 
             var result = JsonSerializer.Deserialize<PdfRenderResult>(await File.ReadAllTextAsync(metadataPath, cancellationToken));
@@ -107,6 +115,8 @@ public sealed class PdfPreviewProvider : IPreviewProvider
                 throw new PdfRenderException("The PDF renderer returned an invalid result.");
             if (result.PageCount == 0)
                 return new RenderedPdfPage(result, null);
+            if (!File.Exists(bitmapPath))
+                throw new PdfRenderException("The PDF renderer returned no image.");
 
             await using var bitmapStream = File.OpenRead(bitmapPath);
             return new RenderedPdfPage(result, new Bitmap(bitmapStream));
@@ -132,7 +142,8 @@ public sealed class PdfPreviewProvider : IPreviewProvider
         string bitmapPath,
         string metadataPath,
         int maximumDimension,
-        int dpi)
+        int dpi,
+        int pageIndex)
     {
         var assemblyPath = typeof(PdfPreviewProvider).Assembly.Location;
         var executablePath = Environment.ProcessPath;
@@ -158,6 +169,7 @@ public sealed class PdfPreviewProvider : IPreviewProvider
         startInfo.ArgumentList.Add(metadataPath);
         startInfo.ArgumentList.Add(maximumDimension.ToString(CultureInfo.InvariantCulture));
         startInfo.ArgumentList.Add(dpi.ToString(CultureInfo.InvariantCulture));
+        startInfo.ArgumentList.Add(pageIndex.ToString(CultureInfo.InvariantCulture));
         return startInfo;
     }
 
