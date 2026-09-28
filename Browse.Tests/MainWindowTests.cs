@@ -33,6 +33,36 @@ namespace Browse.Tests;
 public sealed class MainWindowTests
 {
     [Test]
+    public async Task CheckGoToPasteTrimsWhitespaceAndPreservesInternalSpaces()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
+        await session.Dispatch(async () =>
+        {
+            using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(),
+                new FileOperationService(), new SettingsService());
+            var window = new MainWindow(model);
+            try
+            {
+                model.ShowGoTo();
+                var edit = window.FindControl<TextBox>("GoToTextBox");
+                edit.Text = "prefix/replace/suffix";
+                edit.SelectionStart = 7;
+                edit.SelectionEnd = 14;
+                await window.Clipboard.SetTextAsync(" \r\n\tMy Folder\r\n \t");
+                edit.Paste();
+                await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+                Assert.That(edit.Text, Is.EqualTo("prefix/My Folder/suffix"));
+            }
+            finally
+            {
+                window.Close();
+            }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task CheckSelectedGroupSurvivesMouseDownAndCollapsesOnClickRelease()
     {
         using var temp = new TempDirectory();

@@ -969,6 +969,15 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void OnGoToPastingFromClipboard(object sender, RoutedEventArgs e)
+    {
+        // Handle paste before the single-line TextBox discards clipboard newlines.
+        e.Handled = true;
+        var text = Clipboard == null ? null : await Clipboard.TryGetTextAsync();
+        if (text != null && ViewModel.IsGoToVisible)
+            GoToTextBox.SelectedText = text.Trim();
+    }
+
     private async void OnGoToKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
