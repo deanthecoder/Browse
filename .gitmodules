@@ -4,3 +4,6 @@
 [submodule "Installer"]
 	path = Installer
 	url = https://github.com/deanthecoder/DTC.Installer.git
+[submodule "DTC.AsciiTheme"]
+	path = DTC.AsciiTheme
+	url = https://github.com/deanthecoder/DTC.AsciiTheme.git

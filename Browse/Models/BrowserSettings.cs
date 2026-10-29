@@ -20,6 +20,12 @@ namespace Browse.Models;
 /// </remarks>
 public sealed class BrowserSettings : UserSettingsBase
 {
+    public bool UseRetroAppearance
+    {
+        get => Get<bool>();
+        set => Set(value);
+    }
+
     public bool ShowHiddenItems
     {
         get => Get<bool>();

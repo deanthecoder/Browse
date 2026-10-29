@@ -10,10 +10,10 @@
         MinHeight="360"
         Title="Browse Preview"
         KeyDown="OnKeyDown">
-  <Grid Background="#17191D" RowDefinitions="Auto,*">
-    <Border Grid.Row="0" Background="#24272D" BorderBrush="#3B4049" BorderThickness="0,0,0,1" Padding="14,8">
+  <Grid Background="{DynamicResource BrowseWindowBrush}" RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Background="{DynamicResource BrowseHeaderBrush}" BorderBrush="{DynamicResource BrowseDividerBrush}" BorderThickness="0,0,0,1" Padding="14,8">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-        <TextBlock Text="{Binding PreviewSummary}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding PreviewSummary}" TextTrimming="CharacterEllipsis" FontWeight="{DynamicResource BrowseHeadingWeight}" VerticalAlignment="Center" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
           <Button x:Name="BinaryToggleButton"
                   Padding="7,5"
@@ -34,8 +34,8 @@
               IsVisible="False"
               Click="OnSourceToggleClicked">
         <Grid>
-          <icons:MaterialIcon x:Name="ShowSourceIcon" Kind="CodeTags" Width="18" Height="18" Foreground="#FFFFFF" />
-          <icons:MaterialIcon x:Name="ShowRenderedIcon" Kind="EyeOutline" Width="18" Height="18" Foreground="#FFFFFF" IsVisible="False" />
+          <icons:MaterialIcon x:Name="ShowSourceIcon" Kind="CodeTags" Width="18" Height="18" Foreground="{DynamicResource BrowseWhiteBrush}" />
+          <icons:MaterialIcon x:Name="ShowRenderedIcon" Kind="EyeOutline" Width="18" Height="18" Foreground="{DynamicResource BrowseWhiteBrush}" IsVisible="False" />
         </Grid>
       </Button>
     </Grid>

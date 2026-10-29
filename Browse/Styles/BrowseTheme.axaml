@@ -1,25 +1,66 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <!-- Compact buttons omit the ASCII theme's large minimum size and shadows. -->
+    <ControlTheme x:Key="CompactButtonTheme" TargetType="Button">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="4,1" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource BrowseTextBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}" />
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="Background" Value="{DynamicResource BrowseHoverBrush}" />
+      </Style>
+      <Style Selector="^:pressed">
+        <Setter Property="Background" Value="{DynamicResource BrowseSelectionBrush}" />
+      </Style>
+      <Style Selector="^:focus-visible">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrowseAccentBrush}" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Opacity" Value="0.45" />
+      </Style>
+    </ControlTheme>
+  </Styles.Resources>
   <Style Selector="Window">
-    <Setter Property="Background" Value="#17191D" />
-    <Setter Property="Foreground" Value="#F1F3F5" />
-    <Setter Property="FontFamily" Value="Inter" />
+    <Setter Property="Background" Value="{DynamicResource BrowseWindowBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource BrowseTextBrush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource BrowseFontFamily}" />
   </Style>
   <Style Selector="Button.chrome">
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource BrowseTextBrush}" />
+    <Setter Property="MinWidth" Value="0" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="Padding" Value="7" />
-    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="CornerRadius" Value="{DynamicResource BrowseRadius4}" />
   </Style>
   <Style Selector="Button.chrome:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="#353A43" />
+    <Setter Property="Background" Value="{DynamicResource BrowseHoverBrush}" />
   </Style>
   <Style Selector="Button.favoriteButton.keyboardSelected /template/ ContentPresenter">
-    <Setter Property="Background" Value="#245F9E" />
+    <Setter Property="Background" Value="{DynamicResource BrowseSelectionBrush}" />
   </Style>
   <Style Selector="ListBox.browserList">
-    <Setter Property="Background" Value="#202329" />
+    <Setter Property="Background" Value="{DynamicResource BrowseListBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
   </Style>
@@ -32,22 +73,32 @@
   <Style Selector="ListBox.browserList ListBoxItem:selected /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
   </Style>
+  <Style Selector="ListBox.browserList ListBoxItem:selected">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox.browserList ListBoxItem:selected TextBlock.muted">
+    <Setter Property="Foreground" Value="{DynamicResource BrowseMutedBrush}" />
+  </Style>
   <Style Selector="ListBox.browserList ListBoxItem:selected Border.browserItemRow">
-    <Setter Property="Background" Value="#414750" />
+    <Setter Property="Background" Value="{DynamicResource BrowseInactiveSelectionBrush}" />
   </Style>
   <Style Selector="ListBox.browserList.activeColumn ListBoxItem:selected Border.browserItemRow">
-    <Setter Property="Background" Value="#245F9E" />
+    <Setter Property="Background" Value="{DynamicResource BrowseSelectionBrush}" />
   </Style>
   <Style Selector="Grid.folderDropTarget">
-    <Setter Property="Background" Value="#3A6388" />
+    <Setter Property="Background" Value="{DynamicResource BrowseDropTargetBrush}" />
   </Style>
   <Style Selector="TextBlock.muted">
-    <Setter Property="Foreground" Value="#9CA5B2" />
+    <Setter Property="Foreground" Value="{DynamicResource BrowseMutedBrush}" />
   </Style>
   <Style Selector="ContextMenu">
     <Setter Property="Padding" Value="6" />
   </Style>
   <Style Selector="ContextMenu MenuItem">
     <Setter Property="Padding" Value="12,7" />
+  </Style>
+  <!-- Highlight individual action buttons, not their containing menu row. -->
+  <Style Selector="MenuItem.fileActions /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="{DynamicResource BrowseListBrush}" />
   </Style>
 </Styles>

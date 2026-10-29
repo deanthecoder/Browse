@@ -2,4 +2,5 @@
   <Project Path="Browse/Browse.csproj" />
   <Project Path="Browse.Tests/Browse.Tests.csproj" />
   <Project Path="DTC.Core/DTC.Core/DTC.Core.csproj" />
+  <Project Path="DTC.AsciiTheme/DTC.AsciiTheme/DTC.AsciiTheme.csproj" />
 </Solution>

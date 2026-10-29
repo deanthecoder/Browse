@@ -82,6 +82,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_archiveContentService = archiveContentService ?? new ArchiveContentService();
         m_settingsService = settingsService;
         Settings = settingsService.Load();
+        Settings.PropertyChanged += OnSettingsPropertyChanged;
         m_extensionAliasesText = string.Join(Environment.NewLine, Settings.ExtensionAliases ?? []);
         PopulateSidebar();
     }
@@ -117,6 +118,30 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         m_itemActivities.ToDictionary(pair => pair.Key, pair => string.Join(" · ", pair.Value.Distinct()), StringComparer.OrdinalIgnoreCase);
 
     public BrowserSettings Settings { get; }
+
+    public bool IsAppearanceRestartRequired => m_settingsService.IsAppearanceRestartRequired;
+
+    public bool UseRetroAppearance
+    {
+        get => Settings.UseRetroAppearance;
+        set
+        {
+            if (Settings.UseRetroAppearance == value)
+                return;
+            Settings.UseRetroAppearance = value;
+            m_settingsService.Save(Settings);
+        }
+    }
+
+    private void OnSettingsPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(BrowserSettings.UseRetroAppearance))
+        {
+            OnPropertyChanged(nameof(UseRetroAppearance));
+            OnPropertyChanged(nameof(IsAppearanceRestartRequired));
+        }
+    }
+
     public ObservableCollection<SidebarEntryViewModel> Favorites { get; } = [];
     public ObservableCollection<SidebarEntryViewModel> Drives { get; } = [];
     public ObservableCollection<FolderColumnViewModel> Columns { get; } = [];
@@ -1385,6 +1410,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        Settings.PropertyChanged -= OnSettingsPropertyChanged;
         DisposeWatchers();
         m_navigationCancellation.Cancel();
         m_navigationCancellation.Dispose();

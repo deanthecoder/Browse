@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Browse.Views.AboutWindow"
+        Title="About Browse"
+        Width="440" SizeToContent="Height" CanResize="False"
+        ShowInTaskbar="False" WindowStartupLocation="CenterScreen"
+        KeyDown="OnKeyDown">
+  <Window.Styles>
+    <!-- Use natural font metrics instead of the ASCII theme's fixed character-cell height. -->
+    <Style Selector="TextBlock">
+      <Setter Property="LineHeight" Value="NaN" />
+    </Style>
+  </Window.Styles>
+  <StackPanel Margin="24,24,24,32" Spacing="10">
+    <Image Source="{Binding Icon}" Width="80" Height="80" HorizontalAlignment="Center" Margin="0,0,0,6" />
+    <TextBlock Text="{Binding Title}" FontSize="{DynamicResource BrowseAboutTitleSize}"
+               FontWeight="{DynamicResource BrowseHeadingWeight}"
+               HorizontalAlignment="Center" TextAlignment="Center" />
+    <TextBlock Text="{Binding Version, StringFormat='Version {0}'}"
+               FontSize="{DynamicResource BrowseAboutBodySize}"
+               Classes="muted" HorizontalAlignment="Center" />
+    <StackPanel Spacing="4" Margin="0,8,0,0">
+      <TextBlock Text="{Binding Copyright}" TextWrapping="Wrap" TextAlignment="Center"
+                 FontSize="{DynamicResource BrowseAboutBodySize}" />
+      <TextBlock Text="All rights reserved." Classes="muted" TextAlignment="Center"
+                 FontSize="{DynamicResource BrowseAboutBodySize}" />
+    </StackPanel>
+    <Button Theme="{StaticResource CompactButtonTheme}" HorizontalAlignment="Center"
+            Foreground="{DynamicResource BrowseAccentBrush}" Margin="0,4,0,0"
+            ToolTip.Tip="{Binding WebsiteUrl}" Click="OnWebsiteClicked">
+      <TextBlock Text="{Binding WebsiteUrl}" FontSize="{DynamicResource BrowseAboutBodySize}"
+                 TextWrapping="Wrap" TextAlignment="Center"
+                 Foreground="{DynamicResource BrowseAccentBrush}" />
+    </Button>
+    <Button Content="Close" Theme="{StaticResource CompactButtonTheme}" IsDefault="True"
+            HorizontalAlignment="Center" Padding="16,6" Margin="0,6,0,0"
+            Click="OnCloseClicked" />
+  </StackPanel>
+</Window>

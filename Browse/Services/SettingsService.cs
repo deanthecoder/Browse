@@ -21,8 +21,19 @@ namespace Browse.Services;
 public sealed class SettingsService
 {
     private BrowserSettings m_settings;
+    private bool m_startupRetroAppearance;
 
-    public BrowserSettings Load() => m_settings ??= new BrowserSettings();
+    public BrowserSettings Load()
+    {
+        if (m_settings == null)
+        {
+            m_settings = new BrowserSettings();
+            m_startupRetroAppearance = m_settings.UseRetroAppearance;
+        }
+        return m_settings;
+    }
+
+    public bool IsAppearanceRestartRequired => Load().UseRetroAppearance != m_startupRetroAppearance;
 
     public void Save(BrowserSettings settings)
     {

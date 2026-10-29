@@ -23,7 +23,7 @@
     <Style Selector="icons|MaterialIcon.activitySpinner">
       <Setter Property="Width" Value="16" />
       <Setter Property="Height" Value="16" />
-      <Setter Property="Foreground" Value="#8DBCEB" />
+      <Setter Property="Foreground" Value="{DynamicResource BrowseAccentBrush}" />
       <Setter Property="RenderTransformOrigin" Value="50%,50%" />
     </Style>
     <Style Selector="icons|MaterialIcon.activitySpinner[IsVisible=True]">
@@ -45,20 +45,20 @@
       <MenuItem Header="Browse here..." Click="OnOpenInNewWindowClicked" IsVisible="{Binding CanBrowseInNewWindow}" />
       <MenuItem Header="Open terminal here" Click="OnTerminalClicked" IsVisible="{Binding !IsArchiveEntry}" />
       <Separator />
-      <MenuItem StaysOpenOnClick="True" Padding="4">
+      <MenuItem Classes="fileActions" StaysOpenOnClick="True" Padding="4" Background="{DynamicResource BrowseListBrush}">
         <MenuItem.Header>
           <Grid ColumnDefinitions="Auto,Auto,Auto,12,Auto" ColumnSpacing="4">
-            <Button Grid.Column="0" Classes="chrome" Padding="8,5" ToolTip.Tip="Cut" Click="OnCutClicked" IsVisible="{Binding !IsArchiveEntry}">
+            <Button Grid.Column="0" Theme="{StaticResource CompactButtonTheme}" Padding="8,5" ToolTip.Tip="Cut" Click="OnCutClicked" IsVisible="{Binding !IsArchiveEntry}">
               <icons:MaterialIcon Kind="ContentCut" Width="18" Height="18" />
             </Button>
-            <Button Grid.Column="1" Classes="chrome" Padding="8,5" ToolTip.Tip="Copy" Click="OnCopyClicked">
+            <Button Grid.Column="1" Theme="{StaticResource CompactButtonTheme}" Padding="8,5" ToolTip.Tip="Copy" Click="OnCopyClicked">
               <icons:MaterialIcon Kind="ContentCopy" Width="18" Height="18" />
             </Button>
-            <Button Grid.Column="2" Tag="PasteAction" Classes="chrome" Padding="8,5" ToolTip.Tip="Paste" Click="OnPasteClicked" IsVisible="{Binding CanReceiveFiles}">
+            <Button Grid.Column="2" Tag="PasteAction" Theme="{StaticResource CompactButtonTheme}" Padding="8,5" ToolTip.Tip="Paste" Click="OnPasteClicked" IsVisible="{Binding CanReceiveFiles}">
               <icons:MaterialIcon Kind="ContentPaste" Width="18" Height="18" />
             </Button>
-            <Button Grid.Column="4" Classes="chrome" Padding="8,5" ToolTip.Tip="Delete" Click="OnDeleteClicked" IsVisible="{Binding !IsArchiveEntry}">
-              <icons:MaterialIcon Kind="DeleteOutline" Width="18" Height="18" Foreground="#E98282" />
+            <Button Grid.Column="4" Theme="{StaticResource CompactButtonTheme}" Padding="8,5" ToolTip.Tip="Delete" Click="OnDeleteClicked" IsVisible="{Binding !IsArchiveEntry}">
+              <icons:MaterialIcon Kind="DeleteOutline" Width="18" Height="18" Foreground="{DynamicResource BrowseDestructiveBrush}" />
             </Button>
           </Grid>
         </MenuItem.Header>
@@ -89,14 +89,14 @@
     </ContextMenu>
   </Window.Resources>
 
-  <Grid RowDefinitions="*,26">
+  <Grid RowDefinitions="*,Auto">
     <Grid Grid.Row="0" ColumnDefinitions="185,1,*,1,285">
-      <Border Grid.Column="0" Background="#1B1E23" Padding="8">
+      <Border Grid.Column="0" Background="{DynamicResource BrowseSidebarBrush}" Padding="8">
         <ScrollViewer>
           <StackPanel Spacing="4">
             <Grid ColumnDefinitions="18,*" ColumnSpacing="5" Margin="8,8,8,4">
-              <icons:MaterialIcon Kind="Star" Width="14" Height="14" Foreground="#9CA5B2" />
-              <TextBlock Grid.Column="1" Text="FAVORITES" Classes="muted" FontSize="11" FontWeight="SemiBold" />
+              <icons:MaterialIcon Kind="Star" Width="14" Height="14" Foreground="{DynamicResource BrowseMutedBrush}" />
+              <TextBlock Grid.Column="1" Text="FAVORITES" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" FontWeight="{DynamicResource BrowseHeadingWeight}" />
             </Grid>
             <ItemsControl x:Name="FavoritesItemsControl"
                           ItemsSource="{Binding Favorites}"
@@ -116,14 +116,14 @@
                       </ContextMenu>
                     </Button.ContextMenu>
                     <Grid ColumnDefinitions="24,*" ColumnSpacing="7">
-                      <icons:MaterialIcon Grid.Column="0" Kind="Folder" Width="18" Height="18" Foreground="#8DBCEB" />
+                      <icons:MaterialIcon Grid.Column="0" Kind="Folder" Width="18" Height="18" Foreground="{DynamicResource BrowseAccentBrush}" />
                       <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                     </Grid>
                   </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Text="DRIVES" Classes="muted" FontSize="11" FontWeight="SemiBold" Margin="8,18,8,4" />
+            <TextBlock Text="DRIVES" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" FontWeight="{DynamicResource BrowseHeadingWeight}" Margin="8,18,8,4" />
             <ItemsControl ItemsSource="{Binding Drives}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:SidebarEntryViewModel">
@@ -131,31 +131,31 @@
                           PointerEntered="OnDrivePointerEntered">
                     <ToolTip.Tip>
                       <Border DataContext="{Binding DriveToolTip}" x:DataType="vm:DriveToolTipViewModel"
-                              Width="250" Padding="12" CornerRadius="6" Background="#2A2E35">
+                              Width="250" Padding="12" CornerRadius="{DynamicResource BrowseRadius6}" Background="{DynamicResource BrowseDialogBrush}">
                         <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="7">
                           <Grid ColumnDefinitions="24,*" ColumnSpacing="8">
-                            <icons:MaterialIcon Kind="Harddisk" Width="20" Height="20" Foreground="#8DBCEB" />
+                            <icons:MaterialIcon Kind="Harddisk" Width="20" Height="20" Foreground="{DynamicResource BrowseAccentBrush}" />
                             <StackPanel Grid.Column="1">
-                              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                              <TextBlock Text="{Binding Path}" Classes="muted" FontSize="11" />
+                              <TextBlock Text="{Binding Name}" FontWeight="{DynamicResource BrowseHeadingWeight}" />
+                              <TextBlock Text="{Binding Path}" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" />
                             </StackPanel>
                           </Grid>
                           <ProgressBar Grid.Row="1" Height="7" Minimum="0" Maximum="100"
                                        Value="{Binding UsedPercentage}" IsIndeterminate="{Binding IsLoading}" />
                           <Grid Grid.Row="2" ColumnDefinitions="*,Auto" IsVisible="{Binding IsAvailable}">
-                            <TextBlock Text="{Binding UsageText}" FontSize="11" />
+                            <TextBlock Text="{Binding UsageText}" FontSize="{DynamicResource BrowseFontSize11}" />
                             <TextBlock Grid.Column="1" Text="{Binding UsedPercentage, StringFormat={}{0:N0}%}"
-                                       FontSize="11" FontWeight="SemiBold" />
+                                       FontSize="{DynamicResource BrowseFontSize11}" FontWeight="{DynamicResource BrowseHeadingWeight}" />
                           </Grid>
-                          <TextBlock Grid.Row="3" Text="{Binding FreeText}" Classes="muted" FontSize="11"
+                          <TextBlock Grid.Row="3" Text="{Binding FreeText}" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}"
                                      IsVisible="{Binding IsAvailable}" />
                           <TextBlock Grid.Row="2" Grid.RowSpan="2" Text="Disk usage unavailable" Classes="muted"
-                                     FontSize="11" IsVisible="{Binding IsUnavailable}" />
+                                     FontSize="{DynamicResource BrowseFontSize11}" IsVisible="{Binding IsUnavailable}" />
                         </Grid>
                       </Border>
                     </ToolTip.Tip>
                     <Grid ColumnDefinitions="24,*" ColumnSpacing="7">
-                      <icons:MaterialIcon Grid.Column="0" Kind="Harddisk" Width="18" Height="18" Foreground="#AAB4C2" />
+                      <icons:MaterialIcon Grid.Column="0" Kind="Harddisk" Width="18" Height="18" Foreground="{DynamicResource BrowseSecondaryIconBrush}" />
                       <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                     </Grid>
                   </Button>
@@ -166,7 +166,7 @@
         </ScrollViewer>
       </Border>
 
-      <Border Grid.Column="1" Background="#3B4049" />
+      <Border Grid.Column="1" Background="{DynamicResource BrowseDividerBrush}" />
 
       <ScrollViewer x:Name="ColumnScrollViewer"
                     Grid.Column="2"
@@ -181,11 +181,11 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:FolderColumnViewModel">
-              <Border Width="270" MinWidth="230" Background="#202329" BorderBrush="#3B4049" BorderThickness="0,0,1,0">
+              <Border Width="270" MinWidth="230" Background="{DynamicResource BrowseListBrush}" BorderBrush="{DynamicResource BrowseDividerBrush}" BorderThickness="0,0,1,0">
                 <Grid RowDefinitions="34,Auto,*">
-                  <Border Grid.Row="0" Background="#24272D" BorderBrush="#3B4049" BorderThickness="0,0,0,1" Padding="10,7">
+                  <Border Grid.Row="0" Background="{DynamicResource BrowseHeaderBrush}" BorderBrush="{DynamicResource BrowseDividerBrush}" BorderThickness="0,0,0,1" Padding="10,7">
                     <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Title}" FontWeight="{DynamicResource BrowseHeadingWeight}" TextTrimming="CharacterEllipsis" />
                       <ProgressBar Grid.Column="1" Width="36" Height="3" IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
                     </Grid>
                   </Border>
@@ -206,12 +206,12 @@
                         <DataTemplate x:DataType="models:BrowserItem">
                           <StackPanel>
                             <Border Classes="dateGroupHeader"
-                                    BorderBrush="#4A505A"
+                                    BorderBrush="{DynamicResource BrowseSubtleBorderBrush}"
                                     BorderThickness="0,0,0,1"
                                     Margin="7,8,7,3"
                                     Padding="0,0,0,3"
                                     IsVisible="{Binding GroupHeading, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                              <TextBlock Text="{Binding GroupHeading}" Classes="muted" FontSize="10" FontWeight="SemiBold" />
+                              <TextBlock Text="{Binding GroupHeading}" Classes="muted" FontSize="{DynamicResource BrowseFontSize10}" FontWeight="{DynamicResource BrowseHeadingWeight}" />
                             </Border>
                             <Border Classes="browserItemRow" Padding="7,5">
                               <Grid ColumnDefinitions="22,*,Auto,Auto"
@@ -230,14 +230,14 @@
                                     <RotateTransform />
                                   </icons:MaterialIcon.RenderTransform>
                                 </icons:MaterialIcon>
-                                <TextBlock Grid.Column="3" Text="›" FontSize="18" Classes="muted" IsVisible="{Binding IsDirectory}" />
+                                <TextBlock Grid.Column="3" Text="{DynamicResource BrowseFolderArrow}" FontSize="{DynamicResource BrowseFontSize18}" Classes="muted" IsVisible="{Binding IsDirectory}" />
                               </Grid>
                             </Border>
                           </StackPanel>
                         </DataTemplate>
                       </ListBox.ItemTemplate>
                     </ListBox>
-                    <TextBlock Text="{Binding Error}" Foreground="#FF7B72" TextWrapping="Wrap" Margin="12" />
+                    <TextBlock Text="{Binding Error}" Foreground="{DynamicResource BrowseErrorBrush}" TextWrapping="Wrap" Margin="12" />
                   </Grid>
                 </Grid>
               </Border>
@@ -246,26 +246,26 @@
         </ItemsControl>
       </ScrollViewer>
 
-      <Border Grid.Column="3" Background="#3B4049" />
+      <Border Grid.Column="3" Background="{DynamicResource BrowseDividerBrush}" />
 
-      <Border Grid.Column="4" Background="#1B1E23" Padding="14">
+      <Border Grid.Column="4" Background="{DynamicResource BrowseSidebarBrush}" Padding="14">
         <Grid RowDefinitions="Auto,Auto,*">
           <Grid Grid.Row="0" ColumnDefinitions="40,*" ColumnSpacing="10" IsVisible="{Binding HasSelection}">
             <icons:MaterialIcon Grid.Column="0" Kind="{Binding PreviewIcon}" Width="34" Height="34" Foreground="{Binding PreviewIconBrush}" />
             <TextBlock Grid.Column="1"
                        Text="{Binding PreviewSummary}"
                        ToolTip.Tip="{Binding PreviewPath}"
-                       FontSize="17"
-                       FontWeight="SemiBold"
+                       FontSize="{DynamicResource BrowseFontSize17}"
+                       FontWeight="{DynamicResource BrowseHeadingWeight}"
                        TextWrapping="NoWrap"
                        TextTrimming="CharacterEllipsis"
                        VerticalAlignment="Center" />
           </Grid>
-          <TextBlock Grid.Row="1" Text="{Binding PreviewDetails}" ToolTip.Tip="{Binding PreviewSizeExact}" Classes="muted" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,10" />
-          <Border Grid.Row="2" Background="#121417" BorderBrush="#343941" BorderThickness="1" CornerRadius="5" Padding="10">
+          <TextBlock Grid.Row="1" Text="{Binding PreviewDetails}" ToolTip.Tip="{Binding PreviewSizeExact}" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" TextWrapping="Wrap" Margin="0,8,0,10" />
+          <Border Grid.Row="2" Background="{DynamicResource BrowsePreviewBrush}" BorderBrush="{DynamicResource BrowsePreviewBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource BrowseRadius5}" Padding="10">
             <Grid>
-              <Button x:Name="ExpandPreviewButton" HorizontalAlignment="Right" VerticalAlignment="Bottom" ZIndex="2" Classes="chrome" Background="#D924272D" Padding="5" ToolTip.Tip="Open larger preview..." Click="OnExpandPreviewClicked" IsVisible="{Binding CanExpandPreview}">
-                <icons:MaterialIcon Kind="ArrowExpandAll" Width="18" Height="18" Foreground="#FFFFFF" />
+              <Button x:Name="ExpandPreviewButton" HorizontalAlignment="Right" VerticalAlignment="Bottom" ZIndex="2" Classes="chrome" Background="{DynamicResource BrowseOverlayButtonBrush}" Padding="5" ToolTip.Tip="Open larger preview..." Click="OnExpandPreviewClicked" IsVisible="{Binding CanExpandPreview}">
+                <icons:MaterialIcon Kind="ArrowExpandAll" Width="18" Height="18" Foreground="{DynamicResource BrowseWhiteBrush}" />
               </Button>
               <TextBlock Text="Select a file or folder" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasSelection}" />
               <Image Source="{Binding PreviewImage}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="HighQuality" IsVisible="{Binding IsImagePreview}" />
@@ -274,16 +274,16 @@
                 <TextBlock Text="{Binding PreviewContent}" Classes="muted" TextAlignment="Center" />
               </StackPanel>
               <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsTextPreview}">
-                <TextBlock Text="{Binding PreviewContent}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" />
+                <TextBlock Text="{Binding PreviewContent}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="{DynamicResource BrowseFontSize11}" />
               </ScrollViewer>
               <ScrollViewer HorizontalScrollBarVisibility="Auto" IsVisible="{Binding IsCodePreview}">
-                <TextBlock Text="{Binding PreviewContent}" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="11" />
+                <TextBlock Text="{Binding PreviewContent}" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="{DynamicResource BrowseFontSize11}" />
               </ScrollViewer>
               <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsMarkdownPreview}">
-                <TextBlock Text="{Binding PreviewContent}" TextWrapping="Wrap" FontSize="11" />
+                <TextBlock Text="{Binding PreviewContent}" TextWrapping="Wrap" FontSize="{DynamicResource BrowseFontSize11}" />
               </ScrollViewer>
               <ScrollViewer HorizontalScrollBarVisibility="Auto" IsVisible="{Binding IsArchivePreview}">
-                <TextBlock Text="{Binding PreviewContent}" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="10" />
+                <TextBlock Text="{Binding PreviewContent}" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="{DynamicResource BrowseFontSize10}" />
               </ScrollViewer>
               <TextBlock Text="Open the expanded preview to preview this archive item."
                          Classes="muted"
@@ -293,11 +293,11 @@
                          TextWrapping="Wrap"
                          IsVisible="{Binding IsArchiveEntryPreview}" />
               <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsFolderPreview}">
-                <icons:MaterialIcon Kind="Folder" Width="56" Height="56" Foreground="#8DBCEB" HorizontalAlignment="Center" />
+                <icons:MaterialIcon Kind="Folder" Width="56" Height="56" Foreground="{DynamicResource BrowseAccentBrush}" HorizontalAlignment="Center" />
                 <Button Content="Calculate size" Click="OnCalculateSizeClicked" IsVisible="{Binding CanCalculateFolderSize}" />
-                <TextBlock Text="{Binding FolderSize}" FontSize="15" TextWrapping="Wrap" TextAlignment="Center" />
-                <TextBlock Text="{Binding FolderSizeExact}" Classes="muted" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" />
-                <TextBlock Text="{Binding FolderItemCount}" Classes="muted" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" />
+                <TextBlock Text="{Binding FolderSize}" FontSize="{DynamicResource BrowseFontSize15}" TextWrapping="Wrap" TextAlignment="Center" />
+                <TextBlock Text="{Binding FolderSizeExact}" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" TextWrapping="Wrap" TextAlignment="Center" />
+                <TextBlock Text="{Binding FolderItemCount}" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" TextWrapping="Wrap" TextAlignment="Center" />
               </StackPanel>
               <TextBlock Text="No preview available" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsNoPreview}" />
             </Grid>
@@ -306,64 +306,87 @@
       </Border>
     </Grid>
 
-    <Border Grid.Row="1" Background="#24272D" BorderBrush="#3B4049" BorderThickness="0,1,0,0" Padding="9,2">
-      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7">
+    <Border Grid.Row="1" MinHeight="26" Background="{DynamicResource BrowseHeaderBrush}" BorderBrush="{DynamicResource BrowseDividerBrush}" BorderThickness="0,1,0,0" Padding="9,2">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="7">
         <icons:MaterialIcon Classes="activitySpinner" Kind="Loading" IsVisible="{Binding HasPendingOperations}"
                             ToolTip.Tip="{Binding ActivitySummary}">
           <icons:MaterialIcon.RenderTransform>
             <RotateTransform />
           </icons:MaterialIcon.RenderTransform>
         </icons:MaterialIcon>
-        <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-        <Button Grid.Column="2" Classes="chrome" Padding="3" ToolTip.Tip="Settings" Click="OnSettingsClicked">
-          <icons:MaterialIcon Kind="Cog" Width="16" Height="16" Foreground="#AAB4C2" />
+        <TextBlock Grid.Column="1" Text="{Binding StatusText}" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Content="Restart required" Theme="{StaticResource CompactButtonTheme}"
+                IsVisible="{Binding IsAppearanceRestartRequired}" Click="OnSettingsClicked"
+                ToolTip.Tip="Restart Browse to apply the saved appearance." />
+        <Button Grid.Column="3" Theme="{StaticResource CompactButtonTheme}" ToolTip.Tip="Settings" Click="OnSettingsClicked">
+          <Grid>
+            <icons:MaterialIcon x:Name="SettingsCog" Kind="Cog" Width="16" Height="16"
+                                IsVisible="{DynamicResource BrowseShowModernSettings}"
+                                Foreground="{DynamicResource BrowseSecondaryIconBrush}" />
+            <TextBlock x:Name="AsciiSettingsLabel" Text="[Settings]"
+                       IsVisible="{DynamicResource BrowseShowAsciiSettings}" />
+          </Grid>
         </Button>
       </Grid>
     </Border>
 
     <Border Grid.RowSpan="2" Background="#99000000" IsVisible="{Binding IsGoToVisible}">
-      <Border Width="620" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="18" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,90,0,0">
+      <Border Width="620" Background="{DynamicResource BrowseDialogBrush}" BorderBrush="{DynamicResource BrowseDialogBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource BrowseRadius7}" Padding="18" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,90,0,0">
         <StackPanel Spacing="10">
-          <TextBlock Text="Go to path" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock Text="Go to path" FontSize="{DynamicResource BrowseFontSize17}" FontWeight="{DynamicResource BrowseHeadingWeight}" />
           <TextBox x:Name="GoToTextBox" Text="{Binding GoToPath}" Watermark="Path, home, downloads, localappdata…" KeyDown="OnGoToKeyDown" PastingFromClipboard="OnGoToPastingFromClipboard" />
-          <TextBlock Text="{Binding GoToError}" Foreground="#FF7B72" FontSize="11" IsVisible="{Binding GoToError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-          <TextBlock Text="Enter to open · Escape to cancel" Classes="muted" FontSize="11" />
+          <TextBlock Text="{Binding GoToError}" Foreground="{DynamicResource BrowseErrorBrush}" FontSize="{DynamicResource BrowseFontSize11}" IsVisible="{Binding GoToError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <TextBlock Text="Enter to open · Escape to cancel" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" />
         </StackPanel>
       </Border>
     </Border>
 
     <Border Grid.RowSpan="2" Background="#99000000" IsVisible="{Binding IsRenameVisible}">
-      <Border Width="480" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="18" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,110,0,0">
+      <Border Width="480" Background="{DynamicResource BrowseDialogBrush}" BorderBrush="{DynamicResource BrowseDialogBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource BrowseRadius7}" Padding="18" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,110,0,0">
         <StackPanel Spacing="10">
-          <TextBlock Text="Rename" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock Text="Rename" FontSize="{DynamicResource BrowseFontSize17}" FontWeight="{DynamicResource BrowseHeadingWeight}" />
           <TextBox x:Name="RenameTextBox" Text="{Binding RenameText}" KeyDown="OnRenameKeyDown" />
-          <TextBlock Text="Enter to rename · Escape to cancel" Classes="muted" FontSize="11" />
+          <TextBlock Text="Enter to rename · Escape to cancel" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" />
         </StackPanel>
       </Border>
     </Border>
 
     <Border Grid.RowSpan="2" Background="#99000000" IsVisible="{Binding IsSettingsVisible}">
-      <Border Width="440" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="20" HorizontalAlignment="Right" VerticalAlignment="Stretch" Margin="0,10,10,32">
+      <Border Width="440" Background="{DynamicResource BrowseDialogBrush}" BorderBrush="{DynamicResource BrowseDialogBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource BrowseRadius7}" Padding="20" HorizontalAlignment="Right" VerticalAlignment="Stretch" Margin="0,10,10,32">
         <Grid RowDefinitions="Auto,*" RowSpacing="14">
           <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="Settings" FontSize="18" FontWeight="SemiBold" />
-            <Button Grid.Column="1" Content="✕" Classes="chrome" Click="OnSettingsCloseClicked" />
+            <TextBlock Text="Settings" FontSize="{DynamicResource BrowseFontSize18}" FontWeight="{DynamicResource BrowseHeadingWeight}" />
+            <Button Grid.Column="1" Content="{DynamicResource BrowseCloseLabel}" Classes="chrome" Click="OnSettingsCloseClicked" />
           </Grid>
           <ScrollViewer Grid.Row="1">
           <StackPanel Spacing="14" Margin="0,0,10,0">
+          <StackPanel Spacing="5">
+            <TextBlock Text="Appearance" FontWeight="{DynamicResource BrowseHeadingWeight}" />
+            <CheckBox Content="Retro IBM PC" IsChecked="{Binding UseRetroAppearance, Mode=TwoWay}" />
+            <TextBlock Text="Appearance changes are saved for the next start."
+                       Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" TextWrapping="Wrap" />
+            <Border x:Name="AppearanceRestartPrompt" IsVisible="{Binding IsAppearanceRestartRequired}"
+                    BorderBrush="{DynamicResource BrowseAccentBrush}" BorderThickness="1" Padding="10" Margin="0,5,0,0">
+              <StackPanel Spacing="6">
+                <TextBlock Text="Restart Browse to apply your new look" TextWrapping="Wrap" />
+                <TextBlock Text="Choose Exit from Browse's tray menu, then reopen Browse. Closing a window alone leaves the app running."
+                           Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
           <CheckBox Content="Show hidden and system items" IsChecked="{Binding ShowHiddenItems}" />
           <CheckBox Content="Show dot-prefixed folders (such as .git)" IsChecked="{Binding ShowDotFolders}" />
           <StackPanel IsVisible="{Binding IsWindows}" Spacing="5">
-            <TextBlock Text="Default terminal" Classes="muted" FontSize="11" />
+            <TextBlock Text="Default terminal" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" />
             <ComboBox ItemsSource="{Binding WindowsTerminals}" SelectedItem="{Binding TerminalCommand}" />
           </StackPanel>
           <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="New window shortcut" Classes="muted" FontSize="11" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1" Text="{Binding GlobalShortcutText}" FontSize="11" VerticalAlignment="Center" />
+            <TextBlock Text="New window shortcut" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding GlobalShortcutText}" FontSize="{DynamicResource BrowseFontSize11}" VerticalAlignment="Center" />
           </Grid>
           <StackPanel Spacing="5">
-            <TextBlock Text="File type aliases" FontWeight="SemiBold" />
-            <TextBlock Text="One per line, such as .workzip=.zip or .slnx=.xml" Classes="muted" FontSize="11" TextWrapping="Wrap" />
+            <TextBlock Text="File type aliases" FontWeight="{DynamicResource BrowseHeadingWeight}" />
+            <TextBlock Text="One per line, such as .workzip=.zip or .slnx=.xml" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" TextWrapping="Wrap" />
             <TextBox Text="{Binding ExtensionAliasesText, Mode=TwoWay}"
                      AcceptsReturn="True"
                      TextWrapping="NoWrap"
@@ -372,11 +395,11 @@
                      Watermark=".workzip=.zip" />
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
               <Button Content="Apply aliases" Click="OnApplyExtensionAliasesClicked" />
-              <TextBlock Grid.Column="1" Text="{Binding ExtensionAliasStatus}" Classes="muted" FontSize="11" TextWrapping="Wrap" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding ExtensionAliasStatus}" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" TextWrapping="Wrap" VerticalAlignment="Center" />
             </Grid>
           </StackPanel>
           <Button Content="Reset favorites" HorizontalAlignment="Left" Click="OnResetFavoritesClicked" />
-          <TextBlock Text="Changes are applied immediately and saved automatically." Classes="muted" FontSize="11" TextWrapping="Wrap" />
+          <TextBlock Text="Settings are saved automatically. Appearance changes require a restart." Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" TextWrapping="Wrap" />
           </StackPanel>
           </ScrollViewer>
         </Grid>
@@ -384,11 +407,11 @@
     </Border>
 
     <Border Grid.RowSpan="2" Background="#99000000" IsVisible="{Binding IsNewFolderVisible}">
-      <Border Width="480" Background="#2A2E35" BorderBrush="#59616E" BorderThickness="1" CornerRadius="7" Padding="18" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,110,0,0">
+      <Border Width="480" Background="{DynamicResource BrowseDialogBrush}" BorderBrush="{DynamicResource BrowseDialogBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource BrowseRadius7}" Padding="18" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,110,0,0">
         <StackPanel Spacing="10">
-          <TextBlock Text="New folder" FontSize="17" FontWeight="SemiBold" />
+          <TextBlock Text="New folder" FontSize="{DynamicResource BrowseFontSize17}" FontWeight="{DynamicResource BrowseHeadingWeight}" />
           <TextBox x:Name="NewFolderTextBox" Text="{Binding NewFolderName}" KeyDown="OnNewFolderKeyDown" />
-          <TextBlock Text="Enter to create · Escape to cancel" Classes="muted" FontSize="11" />
+          <TextBlock Text="Enter to create · Escape to cancel" Classes="muted" FontSize="{DynamicResource BrowseFontSize11}" />
         </StackPanel>
       </Border>
     </Border>

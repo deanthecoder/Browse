@@ -33,10 +33,19 @@ public class App : Application
     private TrayIcon m_trayIcon;
     private WindowsGlobalHotKeyHost m_hotKeyHost;
     private SingleInstanceLaunchServer m_launchServer;
+    private AppearanceService m_appearanceService;
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        m_appearanceService = new AppearanceService(this);
+        var settings = m_settingsService.Load();
+        m_appearanceService.Apply(settings.UseRetroAppearance);
+    }
 
     public void OpenWindow(string path = null, Window sourceWindow = null) => CreateWindow(path, sourceWindow: sourceWindow);
+
+    internal void ApplyAppearance(bool retro) => m_appearanceService.Apply(retro);
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -213,7 +222,7 @@ public class App : Application
     private static void ShowAbout()
     {
         var assembly = Assembly.GetEntryAssembly();
-        var dialog = new AboutDialog(new AboutInfo
+        var dialog = new AboutWindow(new AboutInfo
         {
             Title = "Browse",
             Version = assembly?.GetName().Version?.ToString(3) ?? "0.1.0",

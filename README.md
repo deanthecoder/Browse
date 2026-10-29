@@ -47,6 +47,10 @@ The Info pane gives quick, bounded previews without turning ordinary navigation 
 - Advanced commands for MD5, SHA-256, and Base64 output.
 - Multiple independent Browse windows, with remembered window size and last location.
 
+### Retro appearance
+
+Enable **Settings → Appearance → Retro IBM PC** for a blue DOS-style interface with the VGA font and controls from [DTC.AsciiTheme](https://github.com/deanthecoder/DTC.AsciiTheme). The choice is saved automatically. A restart reminder appears in Settings and the status bar when the saved appearance differs from the current one; switching back clears it. Exit Browse from its tray menu and reopen it to apply the change; closing a window alone leaves Browse running. Uncheck the option and restart to return to the modern appearance.
+
 ### Windows integration
 
 - Press `Ctrl+Alt+B` anywhere to open a new Browse window.
