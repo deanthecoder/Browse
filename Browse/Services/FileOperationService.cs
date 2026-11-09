@@ -299,7 +299,11 @@ public sealed class FileOperationService
     /// <remarks>Shell activation can block while Windows checks an executable or contacts an application.</remarks>
     public Task OpenAsync(BrowserItem item) => Task.Run(() =>
     {
-        var startInfo = new ProcessStartInfo(item.FullPath) { UseShellExecute = true };
+        var startInfo = new ProcessStartInfo(item.FullPath)
+        {
+            UseShellExecute = true,
+            WorkingDirectory = Path.GetDirectoryName(item.FullPath)
+        };
         m_startProcess(startInfo);
     });
 
