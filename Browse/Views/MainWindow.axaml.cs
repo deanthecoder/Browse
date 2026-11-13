@@ -368,6 +368,11 @@ public partial class MainWindow : Window
             try
             {
                 var paths = await ViewModel.PrepareArchiveDragAsync(draggedItems);
+                if (OperatingSystem.IsWindows() && paths.Count > 0)
+                {
+                    WindowsFileDrag.Run(e, paths.ToArray(), true, ArchiveDragDataFormat);
+                    return;
+                }
                 var archiveTransfer = new DataTransfer();
                 archiveTransfer.Add(DataTransferItem.Create(ArchiveDragDataFormat, "copy"));
                 foreach (var path in paths)
@@ -380,6 +385,18 @@ public partial class MainWindow : Window
                 }
                 if (archiveTransfer.Items.Count > 0)
                     await DragDrop.DoDragDropAsync(e, archiveTransfer, DragDropEffects.Copy);
+            }
+            catch (Exception ex)
+            {
+                ViewModel.ReportStatus(ex.Message);
+            }
+            return;
+        }
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                WindowsFileDrag.Run(e, draggedItems.Select(item => item.FullPath).ToArray(), false, ArchiveDragDataFormat);
             }
             catch (Exception ex)
             {
