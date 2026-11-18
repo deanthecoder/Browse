@@ -8,6 +8,7 @@
 //
 // THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
 
+using System.IO.Compression;
 using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
@@ -146,6 +147,79 @@ public sealed class MainWindowTests
             finally
             {
                 window.Close();
+            }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task CheckColumnMenuCanTurnOffDateGroupingWithArchiveOpen()
+    {
+        using var temp = new TempDirectory();
+        var olderFile = Path.Combine(temp.FullName, "alpha.txt");
+        File.WriteAllText(olderFile, "older");
+        File.SetLastWriteTime(olderFile, DateTime.Today.AddDays(-14));
+        var archivePath = Path.Combine(temp.FullName, "zulu.zip");
+        using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+            archive.CreateEntry("readme.txt");
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(Assembly.GetExecutingAssembly());
+        await session.Dispatch(async () =>
+        {
+            var settingsService = new SettingsService();
+            using var model = new MainWindowViewModel(new DirectoryContentService(), new PreviewService(),
+                new FileOperationService(), settingsService);
+            var originalGrouping = model.GroupByDateModified;
+            var originalPath = model.Settings.DefaultPath;
+            model.Settings.GroupByDateModified = true;
+            var window = new MainWindow(model, archivePath);
+            window.Show();
+            try
+            {
+                for (var attempt = 0; attempt < 100 &&
+                     (model.Columns.Count < 2 || model.Columns.Any(column => column.IsLoading)); attempt++)
+                    await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+                Assert.That(model.Columns, Has.Count.EqualTo(2));
+                var column = model.Columns[0];
+                var archiveColumn = model.Columns[1];
+                Assert.That(column.Items.Select(item => item.Name), Is.EqualTo(new[] { "zulu.zip", "alpha.txt" }));
+                var list = window.GetVisualDescendants().OfType<ListBox>()
+                    .Single(control => control.DataContext == column);
+                Assert.That(list.GetVisualDescendants().OfType<Border>()
+                    .Any(border => border.Classes.Contains("dateGroupHeader") && border.IsVisible), Is.True);
+
+                var point = list.TranslatePoint(new Point(30, list.Bounds.Height - 20), window)!.Value;
+                window.MouseDown(point, MouseButton.Right);
+                window.MouseUp(point, MouseButton.Right);
+                var menu = (ContextMenu)window.Resources["ColumnContextMenu"];
+                for (var attempt = 0; attempt < 100 && !menu.IsOpen; attempt++)
+                    await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+                Assert.That(menu.IsOpen, Is.True);
+                var toggle = menu.Items.OfType<MenuItem>().Single(item => item.ToggleType == MenuItemToggleType.CheckBox);
+                Assert.That(toggle.IsChecked, Is.True);
+                var popup = TopLevel.GetTopLevel(toggle)!;
+                var togglePoint = toggle.TranslatePoint(new Point(30, toggle.Bounds.Height / 2), popup)!.Value;
+                popup.MouseMove(togglePoint);
+                popup.MouseDown(togglePoint, MouseButton.Left);
+                popup.MouseUp(togglePoint, MouseButton.Left);
+
+                Assert.That(model.GroupByDateModified, Is.False);
+                for (var attempt = 0; attempt < 100 && model.Columns.Any(visibleColumn => visibleColumn.IsLoading); attempt++)
+                    await Task.Delay(10);
+                Dispatcher.UIThread.RunJobs();
+                Assert.That(column.Items.Select(item => item.Name), Is.EqualTo(new[] { "alpha.txt", "zulu.zip" }));
+                Assert.That(list.GetVisualDescendants().OfType<Border>()
+                    .Any(border => border.Classes.Contains("dateGroupHeader") && border.IsVisible), Is.False);
+                Assert.That(model.Columns, Is.EqualTo(new[] { column, archiveColumn }));
+                Assert.That(archiveColumn.Items.Select(item => item.Name), Is.EqualTo(new[] { "readme.txt" }));
+            }
+            finally
+            {
+                window.Close();
+                model.Settings.GroupByDateModified = originalGrouping;
+                model.Settings.DefaultPath = originalPath;
+                settingsService.Save(model.Settings);
             }
             return true;
         }, CancellationToken.None);

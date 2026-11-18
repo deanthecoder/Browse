@@ -1,6 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:DTC.Core.UI;assembly=DTC.Core"
         x:Class="Browse.Views.AboutWindow"
+        x:DataType="ui:AboutInfo"
         Title="About Browse"
         Width="440" SizeToContent="Height" CanResize="False"
         ShowInTaskbar="False" WindowStartupLocation="CenterScreen"

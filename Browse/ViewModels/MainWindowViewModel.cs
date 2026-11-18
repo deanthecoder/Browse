@@ -1012,7 +1012,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public async Task ReloadAllAsync()
     {
         foreach (var column in Columns)
-            m_directoryService.Invalidate(column.Directory);
+        {
+            if (column.Directory is { } directory)
+                m_directoryService.Invalidate(directory);
+        }
         await ReloadCurrentAsync();
     }
 

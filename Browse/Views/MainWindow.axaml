@@ -40,7 +40,7 @@
     </Style>
   </Window.Styles>
   <Window.Resources>
-    <ContextMenu x:Key="ItemContextMenu">
+    <ContextMenu x:Key="ItemContextMenu" x:DataType="models:BrowserItem">
       <MenuItem Header="Open" Click="OnOpenClicked" IsVisible="{Binding CanOpen}" />
       <MenuItem Header="Browse here..." Click="OnOpenInNewWindowClicked" IsVisible="{Binding CanBrowseInNewWindow}" />
       <MenuItem Header="Open terminal here" Click="OnTerminalClicked" IsVisible="{Binding !IsArchiveEntry}" />
@@ -77,7 +77,7 @@
       <MenuItem Header="Compress" Click="OnCreateZipClicked" IsVisible="{Binding !IsArchiveEntry}" />
       <MenuItem Header="Expand archive" Click="OnExpandZipClicked" IsVisible="{Binding IsZipArchive}" />
     </ContextMenu>
-    <ContextMenu x:Key="ColumnContextMenu">
+    <ContextMenu x:Key="ColumnContextMenu" x:DataType="vm:MainWindowViewModel">
       <MenuItem Header="New folder..." Click="OnNewFolderClicked" />
       <MenuItem Header="Paste" Click="OnPasteClicked" />
       <Separator />
